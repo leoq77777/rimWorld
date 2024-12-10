@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/game.dir/src/main.cpp.obj"
   "CMakeFiles/game.dir/src/main.cpp.obj.d"
+  "CMakeFiles/game.dir/src/system/taskSystem.cpp.obj"
+  "CMakeFiles/game.dir/src/system/taskSystem.cpp.obj.d"
   "CMakeFiles/game.dir/src/world/world.cpp.obj"
   "CMakeFiles/game.dir/src/world/world.cpp.obj.d"
   "game.exe"
