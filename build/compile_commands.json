@@ -1,0 +1,14 @@
+[
+{
+  "directory": "D:/desktop/gamedev/proj/build",
+  "command": "\"D:\\Software\\CLion 2024.2.2\\bin\\mingw\\bin\\g++.exe\"  @CMakeFiles/game.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\game.dir\\src\\main.cpp.obj -c D:\\desktop\\gamedev\\proj\\src\\main.cpp",
+  "file": "D:/desktop/gamedev/proj/src/main.cpp",
+  "output": "CMakeFiles/game.dir/src/main.cpp.obj"
+},
+{
+  "directory": "D:/desktop/gamedev/proj/build",
+  "command": "\"D:\\Software\\CLion 2024.2.2\\bin\\mingw\\bin\\g++.exe\"  @CMakeFiles/game.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\game.dir\\src\\world\\world.cpp.obj -c D:\\desktop\\gamedev\\proj\\src\\world\\world.cpp",
+  "file": "D:/desktop/gamedev/proj/src/world/world.cpp",
+  "output": "CMakeFiles/game.dir/src/world/world.cpp.obj"
+}
+]

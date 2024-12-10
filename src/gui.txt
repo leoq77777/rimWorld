@@ -1,0 +1,109 @@
+#include <windows.h>
+#include "world/world.h"
+#include "render/render_system.h"
+#include "utils/camara.hpp"
+#include <iostream>
+#include <sstream>
+bool is_text_in_rectangle(const sf::Text& text, const sf::RectangleShape& rect) {
+    sf::FloatRect textBounds = text.getGlobalBounds();
+    sf::FloatRect rectBounds = rect.getGlobalBounds();
+    return textBounds.intersects(rectBounds);
+}
+
+void generate_random_texts(std::vector<sf::Text>& texts, sf::Font& font) {
+    for (int i = 0; i < 127; ++i) {
+        char c = static_cast<char>(i);
+        sf::Text text(std::string(1, c), font, 30);
+        text.setPosition(rand() % 1920, rand() % 1080);
+        texts.push_back(text);
+    }
+
+}
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "SFML window");
+
+    sf::Font font;
+    if (!font.loadFromFile("C:\\Windows\\Fonts\\Arial.ttf")) {
+        std::cerr << "Failed to load font" << std::endl;
+        return -1;
+    }
+
+    sf::Text characterText;
+    characterText.setFont(font);
+    characterText.setString("*"); // 设置角色为 *
+    characterText.setCharacterSize(48); // 设置字符大小
+    characterText.setFillColor(sf::Color::White); // 设置文本颜色
+    characterText.setPosition(100, 100); // 设置初始位置
+
+    sf::Texture backgroundTexture;
+    if (!backgroundTexture.loadFromFile("../resource/images/logo.jpg")) { // 替换为您的背景图片路径
+        std::cerr << "Error loading background image" << std::endl;
+        
+        //return -1; 
+    }
+    sf::Sprite backgroundSprite;
+    backgroundSprite.setTexture(backgroundTexture);
+    window.draw(backgroundSprite);
+    int i = 0;
+    sf::Clock clock;
+    float speed = 200.0f;
+    int seconds = 0;
+    sf::Vector2f targetPosition = characterText.getPosition();
+    sf::RectangleShape rectangle; // 矩形对象
+    bool isDrawing = false; // 是否正在绘制
+    sf::Vector2f startPoint; // 矩形左上角
+
+    std::vector<sf::Text> texts;
+    generate_random_texts(texts, font);
+    
+    while (window.isOpen()) {
+        i++;
+        window.draw(backgroundSprite);
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed)
+                window.close();
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                    isDrawing = true;
+                    startPoint = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+                    rectangle.setPosition(startPoint);
+                    rectangle.setFillColor(sf::Color::Transparent);
+                    rectangle.setOutlineColor(sf::Color::White);
+                    rectangle.setOutlineThickness(1);
+                }
+
+            if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
+                isDrawing = false;
+            }
+
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P) {
+                // 检查文本是否在矩形内并移除
+                for (auto it = texts.begin(); it != texts.end();) {
+                    if (is_text_in_rectangle(*it, rectangle)) {
+                        it = texts.erase(it); // 移除文本
+                    } else {
+                        ++it;
+                    }
+                }
+            }
+        }
+        
+         if (isDrawing) {
+            sf::Vector2f currentPoint = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+            sf::Vector2f size = currentPoint - startPoint;
+            rectangle.setSize(size);
+        }
+
+        window.clear();
+        if (isDrawing) {
+            window.draw(rectangle); 
+        }
+
+        for (const auto& text : texts) {
+            window.draw(text);
+        }
+        window.display();
+
+    }
+    return 0;
+}
