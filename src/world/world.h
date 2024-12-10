@@ -1,6 +1,9 @@
 #ifndef WORLD_HPP
 #define WORLD_HPP
 #include "../entities/entity.hpp"
+#include "system/actionsystem.hpp"
+#include "system/taskSystem.hpp"
+#include "system/savesystem.hpp"
 #include <list>
 #define MAP_SIZE 50
 #define TILE_SIZE 32
@@ -31,10 +34,19 @@ public:
 
     EntityManager entity_manager_;
     ComponentManager component_manager_;
+    TaskSystem task_system_;
+    ActionSystem action_system_;
+    SaveSystem save_system_;
     std::vector<Entity> characters_;
     std::vector<std::vector<Entities>> entity_map_;
     std::vector<std::vector<int>> mark_map_;
+    void save_game(const std::string& filename = "save.json") {
+        SaveSystem::save_world(*this, filename);
+    }
     
+    void load_game(const std::string& filename = "save.json") {
+        SaveSystem::load_world(*this, filename);
+    }
 private:
     void register_all_components();
     void init_world();

@@ -52,3 +52,15 @@ struct ConstructionComponent {
 struct StorageComponent {
     int storage_capacity;
 };
+
+struct TaskComponent {
+    std::queue<Task> task_queue;
+    Task* current_task;
+    float task_progress;  // 0-100
+};
+
+struct ActionComponent {
+    Action* current_action;
+    float action_progress;  // 0-100
+    float action_timer;
+};
