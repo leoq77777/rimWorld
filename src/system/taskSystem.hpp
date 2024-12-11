@@ -1,259 +1,293 @@
-// tasksystem.hpp
-#ifndef TASK_SYSTEM_HPP
-#define TASK_SYSTEM_HPP
-
+#pragma once
 #include "world/world.h"
 #include <queue>
 #include <algorithm>
-
-enum class TaskType {
-    CHOP_WOOD,
-    BUILD,
-    IDLE,
-    WANDER,
-    COLLECT
-};
-
-struct Task {
-    TaskType type;
-    Entity target_entity;
-    location target_location;
-    int priority;
-    std::queue<Action*> actions;
-
-    Action* get_next_action() {
-        if (actions.empty()) {
-            return nullptr;
-        }
-        Action* next = actions.front();
-        actions.pop();
-        return next;
-    }
-
-    void generate_actions(location start_pos) {
-        switch (type) {
-            case TaskType::CHOP_WOOD: {
-                Action* move = new Action{
-                    ActionType::MOVE,
-                    target_location,
-                    1.0f,
-                    target_entity
-                };
-                Action* chop = new Action{
-                    ActionType::CHOP,
-                    target_location,
-                    3.0f,
-                    target_entity
-                };
-                actions.push(move);
-                actions.push(chop);
-                break;
-            }
-            case TaskType::COLLECT: {
-                Action* move = new Action{
-                    ActionType::MOVE,
-                    target_location,
-                    1.0f,
-                    target_entity
-                };
-                Action* collect = new Action{
-                    ActionType::COLLECT,
-                    target_location,
-                    1.0f,
-                    target_entity
-                };
-                actions.push(move);
-                actions.push(collect);
-                break;
-            }
-            case TaskType::BUILD: {
-                Action* move = new Action{
-                    ActionType::MOVE,
-                    target_location,
-                    1.0f,
-                    target_entity
-                };
-                Action* build = new Action{
-                    ActionType::BUILD,
-                    target_location,
-                    5.0f,
-                    target_entity
-                };
-                actions.push(move);
-                actions.push(build);
-                break;
-            }
-            case TaskType::WANDER: {
-                location random_target = {
-                    start_pos.x + (rand() % 20 - 10),
-                    start_pos.y + (rand() % 20 - 10)
-                };
-                Action* wander = new Action{
-                    ActionType::MOVE,
-                    random_target,
-                    2.0f + (rand() % 30) / 10.0f,
-                    Entity(-1)
-                };
-                actions.push(wander);
-                break;
-            }
-            case TaskType::IDLE: {
-                Action* idle = new Action{
-                    ActionType::MOVE,
-                    start_pos,
-                    2.0f,
-                    Entity(-1)
-                };
-                actions.push(idle);
-                break;
-            }
-        }
-    }
-};
-
 class TaskSystem {
 public:
-    TaskSystem(World& world) : world_(world) {}
+    TaskSystem() = default;
+    TaskSystem(World& new_world) {
+        world_ = new_world;
+        entity_manager_ = world_.entity_manager_;
+        component_manager_ = world_.component_manager_;
+        std::cout << "TaskSystem initialized" << std::endl;
+    }
 
-    void update(float dt) {
-        auto entities = world_.get_active_entities();
-        for (auto entity : entities) {
-            if (!world_.component_manager_.has_component<TaskComponent>(entity)) {
+    Task empty_task() {
+        return Task{TaskType::EMPTY, {-1, -1}, -1, ActionType::NONE};
+    }
+
+    //entity: 
+    Task idle_task() {
+        auto& pos = component_manager.get_component<locationComponent>(entity).loc;
+        return Task{
+            .type = TaskType::IDLE, 
+            .target_location = {pos, pos},
+            .priority = 0, 
+            .target_action = Action{
+                ActionType::WANDER, pos, 0, entity
+            }
+        };
+    }
+
+    //entity: tree to be chopped(marked)
+    Task chop_task(Entity entity) {
+        auto& pos = component_manager.get_component<locationComponent>(entity).loc;
+        
+        return Task{
+            .type = TaskType::CHOP, 
+            .target_location = get_locations_around(pos),
+            .priority = 6, 
+            .target_action = Action{
+                ActionType::CHOP, pos, 5.0, entity
+            }
+        };
+    }
+
+    //entity: resouces to be collected
+    Task collect_task(Entity entity) {
+        auto& pos = component_manager.get_component<locationComponent>(entity).loc;
+        
+        return Task{
+            .type = TaskType::COLLECT, 
+            .target_location = std::vector<location>{pos},
+            .priority = 5, 
+            .target_action = Action{
+                ActionType::PICK, pos, 1.0, entity
+            }
+        };
+    }
+
+    //entity: storage area(units) to obtain resources
+    Task obtain_task(Entity entity) {
+        auto& pos = component_manager.get_component<locationComponent>(entity).loc;
+        return Task{
+            .type = TaskType::OBTAIN, 
+            .target_location = std::vector<location>{pos},
+            .priority = 3, 
+            .target_action = Action{
+                ActionType::PICK, pos, 1.0, entity
+            }
+        };
+    }
+    
+    //entity: storage area(units) to store resources
+    Task store_task(Entity entity) {
+        auto& pos = component_manager.get_component<locationComponent>(entity).loc;
+        
+        return Task{
+            .type = TaskType::PLACE, 
+            .target_location = get_locations_around(pos),
+            .priority = 3, 
+            .target_action = Action{
+                ActionType::PLACE, pos, 1.0, entity
+            }
+        };
+    }
+    
+    //entity: blueprint to be allocated resource
+    Task allocate_task(Entity entity) { 
+        auto& pos = component_manager.get_component<locationComponent>(entity).loc;
+        
+        return Task{
+            .type = TaskType::ALLOCATE, 
+            .target_location = get_locations_around(pos),
+            .priority = 4, 
+            .target_action = Action{
+                ActionType::PLACE, pos, 1.0, entity
+            }
+        };
+    }
+
+    //entity: blueprint to be built
+    Task construct_task(Entity entity) {
+        auto& pos = component_manager.get_component<locationComponent>(entity).loc;
+        
+        return Task{
+            .type = TaskType::COLLECT, 
+            .target_location = get_locations_around(pos),
+            .priority = 6, 
+            .target_action = Action{
+                ActionType::BUILD, pos, 5.0, entity
+            }
+        };
+    }
+
+    //update queue based on existed tasks, which are given by world
+    void update_task_queue(float dt) {
+         //add back all tasks that are not feasible
+        for(auto& entity : world_.get_entities_with_components<TaskComponent>()) {
+            auto& cur_task = component_manager.get_component<TaskComponent>(entity).current_task;
+            if (!cur_task.feasible) {
+                task_queue_.emplace_back(cur_task);
+                cur_task = idle_task();
+            }
+
+            //remove all completed tasks
+            auto& target = component_manager.get_component<TaskComponent>(entity).current_task.target_action.target_entity;
+            auto& track = component_manager.get_component<TargetComponent>(target);
+            if (track.is_finished) {
+                component_manager.remove_component<TargetComponent>(target);
+                cur_task = idle_task();
+            }
+        }
+
+        //add new tasks into queue
+        for (auto& target_entity : world_.get_entities_with_components<TargetComponent>()) {
+            if (target_in_queue(target_entity)) {
+                continue;
+            }
+            auto& track = component_manager.get_component<TargetComponent>(target_entity);
+            if (!track.is_target) {
+                continue;
+            }
+            Task new_task = empty_task();
+            auto render = component_manager.get_component<RenderComponent>(target_entity);
+            //chop tree
+            if (render.entityType == EntityType::TREE) {
+                new_task = chop_task(target_entity);
+            }
+            //collect resource from tree
+            else if (render.entityType == EntityType::WOODPACK) {
+                new_task = collect_task(target_entity);
+            }
+            //allocate resource to blueprint
+            else if ((render.entityType == EntityType::WALL || render.entityType == EntityType::DOOR)
+                    && !component_manager.get_component<ConstructionComponent>(target_entity).allocated
+                    && !component_manager.get_component<ConstructionComponent>(target_entity).is_built) {
+                new_task = allocate_task(target_entity);
+            }
+            //construct blueprint allocated
+            else if ((render.entityType == EntityType::WALL || render.entityType == EntityType::DOOR)
+                    && component_manager.get_component<ConstructionComponent>(target_entity).allocated
+                    && !component_manager.get_component<ConstructionComponent>(target_entity).is_built) {
+                new_task = construct_task(target_entity);
+            }
+            //store resource to storage area
+            else if (render.entityType == EntityType::STORAGE) {
+                new_task = store_task(target_entity);
+            }
+            //obtain task is only called when there is a allocate task
+            task_queue_.emplace_back(new_task);
+        }
+
+        //if no task, add an idle task
+        if (task_queue_.empty()) {
+            task_queue_.emplace_back(idle_task());
+        }
+
+        //sort tasks by priority
+        std::sort(task_queue_.begin(), task_queue_.end(), [](const Task& a, const Task& b) {
+            return a.priority > b.priority;
+        });
+    }
+    
+    void assign_task() {
+        for(auto character : world_.characters_) {
+            bool is_assigned_task = false;
+            auto& character_task = component_manager.get_component<TaskComponent>(character);
+            
+            //keep task at first
+            if (character_task.current_task.type == TaskType::IDLE 
+                && character_task.next_task.type != TaskType::IDLE) {
+                character_task.current_task = character_task.next_task;
+                character_task.next_task = idle_task();
+            }
+
+            if(character_task.current_task.type != TaskType::IDLE) {
                 continue;
             }
 
-            auto& task_comp = world_.component_manager_.get_component<TaskComponent>(entity);
-            
-            // 如果没有当前任务，从队列中获取新任务
-            if (!task_comp.current_task && !task_comp.task_queue.empty()) {
-                task_comp.current_task = &task_comp.task_queue.front();
-                task_comp.task_queue.pop();
+            //only assign task if current task is available
+            for(auto task = task_queue_.begin(); task != task_queue_.end();) {
+                //attention! target_pos is a field, not location
+                auto targets = task->target_locations; 
+                auto character_pos = component_manager.get_component<locationComponent>(character).loc;
+                auto& character_tasks = component_manager.get_component<TaskComponent>(character);
+                
+
+                if (find_path_to_locations(character_pos, targets)) {
+                    if (Entity dst;
+                        task->type == TaskType::ALLOCATE && find_resource_destination(character, dst)) {
+                        //attention: allocate requeires an extra task: collect, which is not from task_queue_
+                        //only if character can find a storage area to obtain resources
+                        //will he carry out the allocate task
+                        character_tasks.current_task = obtain_task(dst); //obtain resources from dst(storage area)
+                        character_tasks.next_task = task;
+                        task = task_queue_.erase(task);
+                        is_assigned_task = true;
+                        break;
+                    } else if (task->type != TaskType::ALLOCATE) {
+                        character_tasks.current_task = task;
+                        task = task_queue_.erase(task);
+                        is_assigned_task = true;
+                        break;
+                        //character can allocate resource if he carries resource
+                    } else if (task->type == TaskType::ALLOCATE && character_carries_resource(character)) {
+                        character_tasks.current_task = task;
+                        task = task_queue_.erase(task);
+                        is_assigned_task = true;
+                        break;
+                    } else {
+                        ++task;
+                        continue;
+                    }
+                } else {
+                    ++task;
+                    continue;
+                }
             }
 
-            // 搜索新任务
-            if (task_comp.task_queue.empty()) {
-                search_available_tasks(entity);
+            if (!is_assigned_task) {//nothing to do, just idle
+                character_task.current_task = idle_task();
+                character_task.next_task = idle_task();
+            }
+
+            for(auto& animal : world_.animals_) {
+                //animals are always idling
+                component_manager.get_component<TaskComponent>(animal).current_task = idle_task();
+                component_manager.get_component<TaskComponent>(animal).next_task = idle_task();
             }
         }
     }
 
 private:
-    float calculate_distance(const location& a, const location& b) {
-        return std::sqrt(std::pow(a.x - b.x, 2) + std::pow(a.y - b.y, 2));
+    bool character_carries_resource(Entity entity) {
+        auto& bag = component_manager.get_component<StorageComponent>(entity);
+        return bag.current_storage > 0;
     }
 
-    std::vector<Entity> find_entities_in_range(location center, int range) {
-        std::vector<Entity> entities_in_range;
-        for (int x = std::max(0, center.x - range); x < std::min(MAP_SIZE, center.x + range); ++x) {
-            for (int y = std::max(0, center.y - range); y < std::min(MAP_SIZE, center.y + range); ++y) {
-                for (Entity entity : world_.entity_map_[x][y]) {
-                    if (calculate_distance(center, {x, y}) <= range) {
-                        entities_in_range.push_back(entity);
-                    }
+    bool find_resource_destination(Entity target, Entity& dst) {
+        bool path_exists = false;
+        int distance = MAX_DISTANCE;
+        for(auto& entity : world_.get_entities_with_components<StorageComponent>()) {
+            //find storage or blueprint
+            if (auto render_type = component_manager.get_component<RenderComponent>(entity).entityType; 
+                ( render_type == EntityType::STORAGE ) || 
+                ((render_type == EntityType::WALL || render_type == EntityType::DOOR) && !entity_manager.get_component<ConstructionComponent>(entity).allocated) 
+                && find_path(target, entity) {
+                if (!path_exists) {
+                    path_exists = true;
+                    distance = calculate_distance(target, entity);
+                    dst = entity;
+                } else if (calculate_distance(target, entity) < distance) {
+                    distance = calculate_distance(target, entity);
+                    dst = entity;
                 }
-            }
         }
-        return entities_in_range;
+        return path_exists;
     }
 
-    int calculate_priority(Entity worker, Entity target) {
-        auto& worker_loc = world_.component_manager_.get_component<locationComponent>(worker);
-        auto& target_loc = world_.component_manager_.get_component<locationComponent>(target);
-        
-        float distance = calculate_distance(worker_loc.loc, target_loc.loc);
-        return static_cast<int>(1000.0f / (1.0f + distance));
-    }
-
-    void search_available_tasks(Entity entity) {
-        auto& loc_comp = world_.component_manager_.get_component<locationComponent>(entity);
-        auto& task_comp = world_.component_manager_.get_component<TaskComponent>(entity);
-        auto& render_comp = world_.component_manager_.get_component<RenderComponent>(entity);
-        
-        // 处理狗的漫游任务
-        if (render_comp.entityType == EntityType::DOG) {
-            if (task_comp.task_queue.empty() && !task_comp.current_task) {
-                Task new_task;
-                new_task.type = TaskType::WANDER;
-                new_task.priority = 1;
-                new_task.generate_actions(loc_comp.loc);
-                task_comp.task_queue.push(new_task);
-            }
-            return;
-        }
-
-        // 处理角色的任务
-        if (render_comp.entityType == EntityType::CHARACTER) {
-            std::vector<Task> available_tasks;
-            
-            // 搜索可收集的资源
-            for (auto target : find_entities_in_range(loc_comp.loc, SEARCH_RANGE)) {
-                if (world_.component_manager_.has_component<ResourceComponent>(target)) {
-                    auto& resource = world_.component_manager_.get_component<ResourceComponent>(target);
-                    if (resource.collectable) {
-                        Task new_task;
-                        new_task.type = TaskType::COLLECT;
-                        new_task.target_entity = target;
-                        new_task.target_location = world_.component_manager_.get_component<locationComponent>(target).loc;
-                        new_task.priority = calculate_priority(entity, target) + 100;
-                        new_task.generate_actions(loc_comp.loc);
-                        available_tasks.push_back(new_task);
-                    }
-                }
-            }
-
-            // 搜索可伐木的树
-            for (auto target : find_entities_in_range(loc_comp.loc, SEARCH_RANGE)) {
-                if (world_.component_manager_.has_component<RenderComponent>(target)) {
-                    auto& render = world_.component_manager_.get_component<RenderComponent>(target);
-                    if (render.entityType == EntityType::TREE) {
-                        Task new_task;
-                        new_task.type = TaskType::CHOP_WOOD;
-                        new_task.target_entity = target;
-                        new_task.target_location = world_.component_manager_.get_component<locationComponent>(target).loc;
-                        new_task.priority = calculate_priority(entity, target);
-                        new_task.generate_actions(loc_comp.loc);
-                        available_tasks.push_back(new_task);
-                    }
-                }
-            }
-
-            // 搜索需要建造的蓝图
-            for (auto target : find_entities_in_range(loc_comp.loc, SEARCH_RANGE)) {
-                if (world_.component_manager_.has_component<ConstructionComponent>(target)) {
-                    auto& construction = world_.component_manager_.get_component<ConstructionComponent>(target);
-                    if (construction.is_blueprint && construction.to_build) {
-                        Task new_task;
-                        new_task.type = TaskType::BUILD;
-                        new_task.target_entity = target;
-                        new_task.target_location = world_.component_manager_.get_component<locationComponent>(target).loc;
-                        new_task.priority = calculate_priority(entity, target) + 50;
-                        new_task.generate_actions(loc_comp.loc);
-                        available_tasks.push_back(new_task);
-                    }
-                }
-            }
-
-            // 按优先级排序任务
-            std::sort(available_tasks.begin(), available_tasks.end(), 
-                [](const Task& a, const Task& b) { return a.priority > b.priority; });
-            
-            // 将排序后的任务添加到任务队列
-            for (const auto& task : available_tasks) {
-                task_comp.task_queue.push(task);
-            }
-
-            // 如果没有找到任何任务，添加一个空闲任务
-            if (task_comp.task_queue.empty() && !task_comp.current_task) {
-                Task idle_task;
-                idle_task.type = TaskType::IDLE;
-                idle_task.priority = 0;
-                idle_task.generate_actions(loc_comp.loc);
-                task_comp.task_queue.push(idle_task);
+    bool target_in_queue(Entity entity) {
+        for (auto task : task_queue_) {
+            if (task.target_action.target_entity == entity) {
+                return true;
             }
         }
+        return false;
     }
 
     World& world_;
+    EntityManager& entity_manager_;
+    ComponentManager& component_manager_;
+    std::vector<Task> task_queue_;
 };
-
-#endif // TASK_SYSTEM_HPP

@@ -1,54 +1,83 @@
-#ifndef WORLD_HPP
-#define WORLD_HPP
+#pragma once
 #include "../entities/entity.hpp"
-#include "system/actionsystem.hpp"
-#include "system/taskSystem.hpp"
-#include "system/savesystem.hpp"
-#include <list>
+#include "utils/path.hpp"
+#include <memory>
 #define MAP_SIZE 50
 #define TILE_SIZE 32
+#define MAX_DIST MAP_SIZE*MAP_SIZE
+#define DEFAULT_SPEED 32
+#define FRAMERATE 60
+class ActionSystem;
+class TaskSystem;
+
 class World {
 public:  
-    World() {
-        characters_.reserve(10);
-        entity_map_.resize(MAP_SIZE, std::vector<Entities>(MAP_SIZE));
-        mark_map_.resize(MAP_SIZE, std::vector<int>(MAP_SIZE, -1));
-        register_all_components();
-        init_world();   
-    };
+    World();
     
-    Entity create_character(int x, int y);
-    Entity create_tree(int x, int y);
-    Entity create_wood(int x, int y);
-    Entity create_wall(int x, int y);
-    Entity create_door(int x, int y);
-    Entity create_dog(int x, int y);
-    Entity create_storage(int x, int y);
+    //Entity creations
+    Entity create_character(Location pos);
+    Entity create_tree(Location pos);
+    Entity create_wood(Location pos);
+    Entity create_wall(Location pos);
+    Entity create_door(Location pos);
+    Entity create_dog(Location pos);
+    Entity create_storage(Location pos);
     Entity create_blueprint(EntityType entityType, int x, int y);
-    void make_storage_area(sf::Vector2i start, sf::Vector2i end);
+    
+    //core logic
     void update();
-    bool is_valid_position(int x, int y);
-    void generate_random_trees(int count);
-    std::vector<Entity> get_active_entities();
-    void entity_query(Entity entity, ComponentType componentType);
 
+    //utility maybe moved to other files
+    bool is_valid_position(Location pos);
+    
+    //functions operated by USER(maybe by UI)
+    void mark_tree();
+    void make_storage_area(Location start, Location end);
+    void set_door_blueprint(Location pos);
+    void set_wall_blueprint(Location pos);
+    
+    //more methods related to entity
+    std::vector<Entity> get_all_entities();
+    std::vector<std::vector<Entities>> load_entity_map();
+    void load_characters();
+    void load_animals();
+    void update_entities();
+    void generate_random_trees(int count);
+    void set_speed(Entity entity, int speed);
+
+    template<typename... ComponentTypes>
+    Entities get_entities_with_components() {
+        Entities entities;
+        for (auto entity : get_all_entities()) {
+            if (has_all_components<ComponentTypes...>(entity)) {
+                entities.push_back(entity);
+            }
+        }
+        return entities;
+    }
+
+    template<typename... ComponentTypes>
+    bool has_all_components(Entity entity) {
+        return (... && component_manager_.has_component<ComponentTypes>(entity));
+    }
+
+    //about world save and load
+    void save_world();
+    void load_world();
+    
+    //some containers, managers, systems
     EntityManager entity_manager_;
     ComponentManager component_manager_;
-    TaskSystem task_system_;
-    ActionSystem action_system_;
-    SaveSystem save_system_;
+
+    //std::shared_ptr<ActionSystem> action_system_;
+    //std::shared_ptr<TaskSystem> task_system_;
+
     std::vector<Entity> characters_;
+    std::vector<Entity> animals_;
     std::vector<std::vector<Entities>> entity_map_;
     std::vector<std::vector<int>> mark_map_;
-    void save_game(const std::string& filename = "save.json") {
-        SaveSystem::save_world(*this, filename);
-    }
-    
-    void load_game(const std::string& filename = "save.json") {
-        SaveSystem::load_world(*this, filename);
-    }
 private:
+    //starter function run every time
     void register_all_components();
     void init_world();
 };
-#endif

@@ -1,183 +1,249 @@
+#pragma once
 #include "world/world.h"
 
-enum class ActionType {
-    MOVE,
-    CHOP,
-    BUILD,
-    COLLECT
-};
-
-struct Action {
-    ActionType type;
-    location target_location;
-    float duration;
-    Entity target_entity;
-};
 class ActionSystem {
 public:
-    ActionSystem(World& world) {
-        auto entity_manager = world.entity_manager_;
-        auto component_manager = world.component_manager_; 
+    ActionSystem(World& new_world) : world_(new_world) {
+        entity_manager_ = world_.entity_manager_;
+        component_manager_ = world_.component_manager_;
+        std::cout << "ActionSystem initialized" << std::endl;
     }
 
     void update(float dt) {
-        auto entities = entity_manager.get_all_entities();
+        auto entities = world_.get_entities_with_components<TaskComponent>();
         for (auto entity : entities) {
-            if (!component_manager.has_component<ActionComponent>(entity) ||
-                !component_manager.has_component<TaskComponent>(entity)) {
+            if (!component_manager.has_component<ActionComponent>(entity)) {
                 continue;
             }
 
-            auto& action_comp = component_manager.get_component<ActionComponent>(entity);
-            auto& task_comp = component_manager.get_component<TaskComponent>(entity);
+            auto& action = component_manager.get_component<ActionComponent>(entity);
+            auto& task = component_manager.get_component<TaskComponent>(entity);
+            
+            //assign action based on current task
+            assign_action(entity);
 
-            if (task_comp.current_task) {
-                // 执行当前动作
-                if (action_comp.current_action) {
-                    execute_current_action(entity, dt);
-                }
-                // 获取新动作
-                else {
-                    start_next_action(entity);
-                }
-            }
+            //execute
+            execute_current_action(entity);
         }
     }
 
 private:
-    void start_next_action(Entity entity) {
-        auto& task_comp = component_manager.get_component<TaskComponent>(entity);
-        auto& action_comp = component_manager.get_component<ActionComponent>(entity);
-        
-        Action* next_action = task_comp.current_task->get_next_action();
-        if (next_action) {
-            action_comp.current_action = next_action;
-            action_comp.action_timer = 0;
-            action_comp.action_progress = 0;
+    Action wander(Entity entity) {
+        int direction = rand() % 4;
+        float speed = rand() % DEFAULT_SPEED;
+        Location next_pos;
+        Location cur_pos = component_manager.get_component<locationComponent>(entity).loc;
+        if (direction == 0) {
+            next_pos = {std::min(cur_pos.x + 1, MAP_SIZE - 1), cur_pos.y};
+        } else if (direction == 1) {
+            next_pos = {std::max(cur_pos.x - 1, 0), cur_pos.y};
+        } else if (direction == 2) {
+            next_pos = {cur_pos.x, std::min(cur_pos.y + 1, MAP_SIZE - 1)};
+        } else if (direction == 3) {
+            next_pos = {cur_pos.x, std::max(cur_pos.y - 1, 0)};
         }
+        return Action{
+            .type = ActionType::MOVE, 
+            .target_location = next_pos, 
+            .duration = 0, 
+            .target_entity = entity};
     }
 
-    void execute_current_action(Entity entity, float dt) {
-        auto& action_comp = component_manager.get_component<ActionComponent>(entity);
-        
-        switch (action_comp.current_action->type) {
-            case ActionType::MOVE:
-                execute_move_action(entity, dt);
-                break;
-            default:
-                update_action_progress(entity, dt);
-                break;
-        }
-
-        // 检查动作是否完成
-        if (action_comp.action_progress >= 100) {
-            complete_action(entity);
-        }
+    Action none_action(Entity entity) {
+        return Action{
+            .type = ActionType::NONE, 
+            .target_location = component_manager.get_component<locationComponent>(entity).loc, 
+            .duration = 0, 
+            .target_entity = entity};
     }
 
-    void execute_move_action(Entity entity, float dt) {
-        auto& action_comp = world_.component_manager_.get_component<ActionComponent>(entity);
-        auto& loc_comp = world_.component_manager_.get_component<locationComponent>(entity);
-        auto& move_comp = world_.component_manager_.get_component<moveComponent>(entity);
-        auto& render_comp = world_.component_manager_.get_component<RenderComponent>(entity);
+    Action move_action(Entity entity, Path path) {
+        auto& next_pos = path.front();
+        return Action{
+            .type = ActionType::MOVE, 
+            .target_location = next_pos, 
+            .duration = static_cast<float>(path.size() * 0.1), 
+            .target_entity = entity};
+    }
+    
+    void assign_action(Entity entity) {
+        auto& action = component_manager.get_component<ActionComponent>(entity);
+        //consider only current task
+        auto& task = component_manager.get_component<TaskComponent>(entity).current_task;
+        auto& cur_pos = component_manager.get_component<locationComponent>(entity).loc;
+        auto& target_pos = task.target_locations;
 
-        location target = action_comp.current_action->target_location;
-        float dx = target.x - loc_comp.loc.x;
-        float dy = target.y - loc_comp.loc.y;
-        float distance = std::sqrt(dx * dx + dy * dy);
+        //isolately deal with idle task
+        if (task.type == TaskType::IDLE) {
+            action.current_action = wander(entity);
+            return;
+        }
 
-        if (distance > 0.1f) {
-            float speed = 5.0f;
-            move_comp.veloX = (dx / distance) * speed;
-            move_comp.veloY = (dy / distance) * speed;
-
-            loc_comp.loc.x += move_comp.veloX * dt;
-            loc_comp.loc.y += move_comp.veloY * dt;
-            render_comp.render_pos = sf::Vector2f(loc_comp.loc.x * TILE_SIZE, loc_comp.loc.y * TILE_SIZE);
-
-            action_comp.action_progress = (1.0f - (distance / action_comp.current_action->duration)) * 100;
+        //arrive at target location, take some action if needed
+        if (is_in_field(cur_pos, target_pos)) {
+            action.current_action = task.target_action;
         } else {
-            loc_comp.loc = target;
-            render_comp.render_pos = sf::Vector2f(target.x * TILE_SIZE, target.y * TILE_SIZE);
-            action_comp.action_progress = 100;
-            move_comp.veloX = 0;
-            move_comp.veloY = 0;
+            //update path, and move
+            Path path = find_path(cur_pos, target_pos, world_);
+            //could not reach target location, set task unfeasible
+            if (path.empty()) {
+                task.feasible = false;
+                task.target_action = Action{ActionType::NONE, location(), 0, Entity()};
+                return;
+            }   
+            //move
+            action.current_action = move_action(entity, path);
+        }
+    }
+    
+    void execute_current_action(Entity entity) {
+        auto& current_action = component_manager.get_component<ActionComponent>(entity);
+        auto& task = component_manager.get_component<TaskComponent>(entity);
+        auto& cur_pos = component_manager.get_component<locationComponent>(entity).loc;
+        auto& target_pos = task.target_location;
+        if (current_action.type == ActionType::MOVE) {
+            move(entity);
+        }
+        else if (current_action.type == ActionType::CHOP) {
+            chop(entity);
+        }
+        else if (current_action.type == ActionType::PICK) {
+            pick(entity);
+        }
+        else if (current_action.type == ActionType::PLACE) {
+            place(entity);
+        }
+        else if (current_action.type == ActionType::BUILD) {
+            build(entity);
         }
     }
 
-    void update_action_progress(Entity entity, float dt) {
-        auto& action_comp = component_manager.get_component<ActionComponent>(entity);
-        action_comp.action_timer += dt;
-        action_comp.action_progress = 
-            (action_comp.action_timer / action_comp.current_action->duration) * 100;
+    void finish_action(Entity entity) {
+        auto& action = component_manager.get_component<ActionComponent>(entity);
+        action.current_action = none_action(entity);
     }
 
-    void complete_action(Entity entity) {
-        auto& action_comp = world_.component_manager_.get_component<ActionComponent>(entity);
-        auto& task_comp = world_.component_manager_.get_component<TaskComponent>(entity);
-
-        switch (action_comp.current_action->type) {
-            case ActionType::CHOP:
-                complete_chop_action(entity);
-                break;
-            case ActionType::BUILD:
-                complete_build_action(entity);
-                break;
-            case ActionType::COLLECT:
-                complete_collect_action(entity);
-                break;
-            default:
-                break;
-        }
-
-        delete action_comp.current_action;
-        action_comp.current_action = nullptr;
-        action_comp.action_timer = 0;
-        action_comp.action_progress = 0;
-
-        if (!task_comp.current_task->get_next_action()) {
-            task_comp.current_task = nullptr;
+    //entity is character or animal
+    void move(Entity entity) {
+        auto& action = component_manager.get_component<ActionComponent>(entity);
+        auto& cur_pos = component_manager.get_component<locationComponent>(entity).loc;
+        auto& target_pos = action.target_location;
+        if (cur_pos == target_pos) {
+            return;
         }
     }
 
-    void complete_chop_action(Entity entity) {
-        auto& action_comp = world_.component_manager_.get_component<ActionComponent>(entity);
-        Entity tree = action_comp.current_action->target_entity;
-        
-        if (world_.component_manager_.has_component<ResourceComponent>(tree)) {
-            auto& tree_loc = world_.component_manager_.get_component<locationComponent>(tree);
-            world_.create_wood(tree_loc.loc.x, tree_loc.loc.y);
-            world_.entity_manager_.destroy_entity(tree);
+    //entity is character
+    void chop(Entity entity) {
+        auto& action = component_manager.get_component<ActionComponent>(entity);
+        auto& tree = action.target_entity;
+        auto& tree_pos = component_manager.get_component<locationComponent>(tree).loc;
+        auto& entity_pos = component_manager.get_component<locationComponent>(entity).loc;
+        //every update is 1s / framerate(s), duration is 5s
+        auto& track = component_manager.get_component<trackComponent>(tree);
+        track.progress += 100 / action.duration * FRAMERATE;
+        if (track.progress >= action.duration) {
+            track.is_finished = true;
+            track.to_be_deleted = true;
+            finish_action(entity);
+            for(int i = 0; i < 11; i++) {
+                world_.create_wood(tree_pos);
+            }
         }
     }
 
-    void complete_build_action(Entity entity) {
-        auto& action_comp = world_.component_manager_.get_component<ActionComponent>(entity);
-        Entity blueprint = action_comp.current_action->target_entity;
-        
-        if (world_.component_manager_.has_component<ConstructionComponent>(blueprint)) {
-            auto& construction = world_.component_manager_.get_component<ConstructionComponent>(blueprint);
-            auto& collision = world_.component_manager_.get_component<collisionComponent>(blueprint);
+    //entity is character
+    void pick(Entity entity) {
+        //add a storage if entity does not have one
+        if (!component_manager.has_component<StorageComponent>(entity)) {
+            component_manager.add_component(entity, StorageComponent{999, 0});
+        }
+
+        auto& action = component_manager.get_component<ActionComponent>(entity);
+        auto& target = action.target_entity;
+        auto& render = component_manager.get_component<RenderComponent>(entity);
+        //PICK ACTION has target entity of RESOURCE or STORAGE
+        if (render.type == EntityType::WOODPACK) {
+            auto& resource = component_manager.get_component<ResourceComponent>(target);
+            auto& amount = resource.amount;
+            auto& holder = resource.holder;
+            if (bag.storage_capacity - bag.current_storage >= 5) {
+                bag.current_storage += amount;
+                bag.stored_resources.emplace_back(resource_entity);
+                holder = entity;
+            } else {
+                std::cout << "bag is full" << std::endl;
+            }
+        } else if (render.type == EntityType::STORAGE) {
             
-            construction.is_blueprint = false;
-            construction.to_build = false;
-            collision.collidable = true;
         }
     }
 
-    void complete_collect_action(Entity entity) {
-        auto& action_comp = world_.component_manager_.get_component<ActionComponent>(entity);
-        Entity resource = action_comp.current_action->target_entity;
+    //entity is character
+    void place(Entity entity) {
+        auto& action = component_manager.get_component<ActionComponent>(entity);
+        auto& site = action.target_entity;
+        auto& site_pos = component_manager.get_component<locationComponent>(site).loc;
+        auto& entity_pos = component_manager.get_component<locationComponent>(entity).loc;
+
+        auto& carriage = component_manager.get_component<StorageComponent>(entity);
+        auto& storage = component_manager.get_component<StorageComponent>(site);
         
-        if (world_.component_manager_.has_component<ResourceComponent>(resource)) {
-            world_.entity_manager_.destroy_entity(resource);
+        auto& render = component_manager.get_component<RenderComponent>(site);
+        if (render.type == EntityType::STORAGE) {
+            //put all woodpacks into storage
+            storage += carriage.current_storage;
+            carriage.current_storage = 0;
+            //transfer ownership
+            for (auto& resource : storage.stored_resources) {
+                component_manager.get_component<ResourceComponent>(resource).holder = site;
+            }
+            storage.stored_resources.clear();
+        } else if (render.type == EntityType::WALL || render.type == EntityType::DOOR) {
+            while(storage.current_storage < storage.storage_capacity && carriage.current_storage > 0) {
+                auto& cur_resource = carriage.stored_resources.front();
+                //transfer ownership of current woodpack(entity)
+                component_manager.get_component<ResourceComponent>(cur_resource).holder = site;
+                
+                //update storage
+                storage.current_storage += 5;
+                carriage.current_storage -= 5;
+                storage.stored_resources.emplace_back(cur_resource);
+                carriage.stored_resources.pop_front();
+            }
+            //check if enough woodpacks to build
+            if (storage.current_storage >= storage.storage_capacity) {
+                std::cout << "enough woodpacks to build" << std::endl;
+                site.allocated = true;
+                //if character carries resource, then he just carries
+                //until allocate/store task is assigned to him
+            //check if woodpacks in bag are used up
+            } else if (carriage.current_storage == 0) {
+                std::cout << "all woodpacks in bag are placed" << std::endl;
+                return;
+            }
+        }
+        //draw resource! based on current_storage displaying amount
+    }
+
+    //entity is character
+    void build(Entity entity) {
+        auto& action = component_manager.get_component<ActionComponent>(entity);
+        auto& blueprint = action.target_entity;
+        auto& track = component_manager.get_component<trackComponent>(blueprint);
+        track.progress += 100 / action.duration * FRAMERATE;
+        if (track.progress >= 100) {
+            track.is_finished = true;
+            finish_action(entity);
+            component_manager.add_component(blueprint, CollisionComponent{true});
+            component_manager.remove_component<TargetComponent>(blueprint);
+            component_manager.remove_component<TaskComponent>(blueprint);
+            auto& construction = component_manager.get_component<ConstructionComponent>(blueprint);
+            construction.is_built = true;
         }
     }
 
     World& world_;
-
-
     ComponentManager& component_manager;
     EntityManager& entity_manager;
-    World& world;
 };

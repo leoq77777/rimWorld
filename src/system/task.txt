@@ -1,0 +1,92 @@
+class TaskSystem {
+public:
+    void update(GameWorld& world, float deltaTime);
+
+private:
+    void assign_tasks_to_workers(GameWorld& world);
+    Entity find_next_target(Entity workerEntity, GameWorld& world);
+};
+
+void TaskSystem::assign_tasks_to_workers(GameWorld& world) {
+    // 查找所有带有 TaskComponent 和 ActionComponent 的工人实体
+    for (auto& [workerEntity, components] : world.get_entities_with<TaskComponent, ActionComponent>()) {
+        auto& taskComponent = *std::get<TaskComponent*>(components);
+        if (!taskComponent.current_task) {
+            // 尝试为工人分配新任务
+            Entity targetEntity = find_next_target(workerEntity, world);
+            if (targetEntity != InvalidEntity) {
+                // 获取目标实体的任务组件
+                auto& targetTaskComponent = world.get_entity(targetEntity)->get_component<TaskComponent>();
+                if (!targetTaskComponent.task_queue.empty()) {
+                    // 从目标实体获取下一个任务并分配给工人
+                    taskComponent.current_task = &targetTaskComponent.task_queue.front();
+                    targetTaskComponent.task_queue.pop();
+                }
+            }
+        }
+    }
+}
+
+Entity TaskSystem::find_next_target(Entity workerEntity, GameWorld& world) {
+    // 定义一个方法来查找所有带有 TaskComponent 的实体
+    auto targets = world.get_entities_with<TaskComponent>();
+
+    // 根据某些规则选择最佳目标，例如最接近的未完成任务
+    Entity bestTarget = InvalidEntity;
+    float closestDistance = std::numeric_limits<float>::max();
+    sf::Vector2f workerPos = world.get_entity(workerEntity)->get_component<RenderComponent>().render_pos;
+    
+    for (const auto& [targetEntity, components] : targets) {
+        auto& targetTaskComponent = *std::get<TaskComponent*>(components);
+        if (!targetTaskComponent.task_queue.empty()) {
+            sf::Vector2f targetPos = world.get_entity(targetEntity)->get_component<LocationComponent>().loc;
+            float distance = calculate_distance(workerPos, targetPos);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                bestTarget = targetEntity;
+            }
+        }
+    }
+
+    return bestTarget;
+}
+
+void TaskSystem::update(GameWorld& world, float deltaTime) {
+    // 分配任务给空闲工人
+    assign_tasks_to_workers(world);
+
+    // 遍历所有带有 TaskComponent 和 ActionComponent 的工人实体
+    for (auto& [workerEntity, components] : world.get_entities_with<TaskComponent, ActionComponent>()) {
+        auto& taskComponent = *std::get<TaskComponent*>(components);
+        auto& actionComponent = *std::get<ActionComponent*>(components);
+
+        // 如果工人有当前任务，则更新任务进度
+        if (taskComponent.current_task) {
+            actionComponent.action_progress += deltaTime * taskComponent.current_task->priority;
+            if (actionComponent.action_progress >= taskComponent.current_task->duration) {
+                complete_current_task(workerEntity, world);
+                actionComponent.action_progress = 0.0f;
+            }
+        }
+    }
+}
+
+void TaskSystem::complete_current_task(Entity workerEntity, GameWorld& world) {
+    auto& workerTaskComponent = world.get_entity(workerEntity)->get_component<TaskComponent>();
+    if (workerTaskComponent.current_task) {
+        switch (workerTaskComponent.current_task->type) {
+            case TaskType::CHOP_WOOD:
+                // 移除树木实体并生成资源
+                remove_tree_and_generate_resources(world, workerTaskComponent.current_task->target_entity);
+                break;
+            case TaskType::BUILD:
+                // 完成建筑物的建造
+                finish_building(world, workerTaskComponent.current_task->target_entity);
+                break;
+            // ... 其他任务类型 ...
+        }
+
+        // 清除工人的当前任务
+        workerTaskComponent.current_task = nullptr;
+    }
+}
