@@ -1,6 +1,5 @@
 #pragma once
 #include "../entities/entity.hpp"
-#include "utils/path.hpp"
 #include <memory>
 #include <vector>
 #include <iostream>
@@ -127,7 +126,7 @@ Entity World::create_wood(Location loc) {
     CollisionComponent collision{false}; 
     //one pack has 5 woods without holder
     ResourceComponent resource{5, -1};
-    RenderComponent render{EntityType::WOODPACK};
+    RenderComponent render{EntityType::WOODPACK, false, sf::Vector2f(loc.x * TILE_SIZE, loc.y * TILE_SIZE)};
     component_manager_.add_component(entity, location);
     component_manager_.add_component(entity, collision);
     component_manager_.add_component(entity, resource);
@@ -143,7 +142,7 @@ Entity World::create_wall(Location loc) {
     CollisionComponent collision{false};
     ConstructionComponent construction{true, true};
     StorageComponent storage{5, 0, Entities()};
-    RenderComponent render{EntityType::WALL};
+    RenderComponent render{EntityType::WALL, false, sf::Vector2f(loc.x * TILE_SIZE, loc.y * TILE_SIZE)};
     component_manager_.add_component(entity, location);
     component_manager_.add_component(entity, collision);
     component_manager_.add_component(entity, construction);
@@ -160,7 +159,7 @@ Entity World::create_door(Location loc) {
     ConstructionComponent construction{true, true};
     CollisionComponent collision{false};
     StorageComponent storage{25, 0, Entities()};
-    RenderComponent render{EntityType::DOOR};
+    RenderComponent render{EntityType::DOOR, false, sf::Vector2f(loc.x * TILE_SIZE, loc.y * TILE_SIZE)};
     //减速实现未完成
     component_manager_.add_component(entity, location);
     component_manager_.add_component(entity, construction);
@@ -208,7 +207,65 @@ Entity World::create_storage(Location loc) {
 }
 
 void World::update() {
-    // 实现代码...
+    // 更新所有实体状态
+    update_entities();
+    
+    // 更新角色移动
+    for(auto& entity : characters_) {
+        if(component_manager_.has_component<MovementComponent>(entity)) {
+            auto& movement = component_manager_.get_component<MovementComponent>(entity);
+            if(movement.speed > 0) {
+                movement.progress += movement.speed / (float)FRAMERATE;
+                if(movement.progress >= 1.0f) {
+                    // 移动完成，更新位置
+                    auto& location = component_manager_.get_component<LocationComponent>(entity);
+                    auto& render = component_manager_.get_component<RenderComponent>(entity);
+                    
+                    // 从旧位置的entity_map中移除
+                    auto& old_entities = entity_map_[location.loc.x][location.loc.y];
+                    old_entities.erase(std::remove(old_entities.begin(), old_entities.end(), entity), old_entities.end());
+                    
+                    // 更新位置
+                    location.loc = movement.end_pos;
+                    render.render_pos = sf::Vector2f(location.loc.x * TILE_SIZE, location.loc.y * TILE_SIZE);
+                    
+                    // 添加到新位置的entity_map
+                    entity_map_[location.loc.x][location.loc.y].push_back(entity);
+                    
+                    // 重置移动组件
+                    movement.start_pos = movement.end_pos;
+                    movement.progress = 0.0f;
+                    movement.speed = 0;
+                }
+            }
+        }
+    }
+    
+    // 更新动物移动（与角色类似）
+    for(auto& entity : animals_) {
+        if(component_manager_.has_component<MovementComponent>(entity)) {
+            auto& movement = component_manager_.get_component<MovementComponent>(entity);
+            if(movement.speed > 0) {
+                movement.progress += movement.speed / (float)FRAMERATE;
+                if(movement.progress >= 1.0f) {
+                    auto& location = component_manager_.get_component<LocationComponent>(entity);
+                    auto& render = component_manager_.get_component<RenderComponent>(entity);
+                    
+                    auto& old_entities = entity_map_[location.loc.x][location.loc.y];
+                    old_entities.erase(std::remove(old_entities.begin(), old_entities.end(), entity), old_entities.end());
+                    
+                    location.loc = movement.end_pos;
+                    render.render_pos = sf::Vector2f(location.loc.x * TILE_SIZE, location.loc.y * TILE_SIZE);
+                    
+                    entity_map_[location.loc.x][location.loc.y].push_back(entity);
+                    
+                    movement.start_pos = movement.end_pos;
+                    movement.progress = 0.0f;
+                    movement.speed = 0;
+                }
+            }
+        }
+    }
 }
 
 bool World::is_valid_position(Location loc) {
@@ -274,6 +331,7 @@ std::vector<std::vector<Entities>> World::load_entity_map() {
     return entity_map;
 }
 
+/*save and load
 void World::load_characters() {
     // 实现代码...
 }
@@ -281,6 +339,14 @@ void World::load_characters() {
 void World::load_animals() {
     // 实现代码...
 }
+void World::save_world() {
+    // 实现代码...
+}
+
+void World::load_world() {
+    // 实现代码...
+}
+*/
 
 void World::update_entities() {
     for(auto& entity : get_all_entities()) {
@@ -309,13 +375,7 @@ void World::set_speed(Entity entity, int speed) {
     component_manager_.get_component<MovementComponent>(entity).speed = speed;
 }
 
-void World::save_world() {
-    // 实现代码...
-}
 
-void World::load_world() {
-    // 实现代码...
-}
 
 void World::register_all_components() {
     std::cout << "registering components: \nlocationComponent\ncollisionComponent\nmoveComponent\nResourceComponent\nRenderComponent\nConstructionComponent" << std::endl;

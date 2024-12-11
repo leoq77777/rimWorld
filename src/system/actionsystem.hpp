@@ -1,7 +1,4 @@
 #pragma once
-#include "world/world.hpp"
-#include "components/componentManager.hpp"
-#include "entities/entity.hpp"
 #include "utils/path.hpp"
 class ActionSystem {
     static constexpr float BASE_MOVE_SPEED = 2.0f;  // 基础移动速度（格/秒）

@@ -1,8 +1,7 @@
 #pragma once
 #include "world/world.hpp"
-#include <SFML/Graphics.hpp>
-#include <iostream>
 #include <cmath>
+
 
 class SelectionMenu {
 public:
@@ -28,22 +27,22 @@ public:
     
     }
     bool isVisible() const {    
-        return isVisible; 
+        return isVisible_; 
     }
     
     void draw() {
-        if (!isVisible) return;
+        if (!isVisible_) return;
         window_.draw(menuBackground);
         window_.draw(buildStorageBtn);
         window_.draw(markTreesBtn);
     }
 
     bool isBuildStorageClicked(sf::Vector2i mousePos) {
-        return isVisible && buildStorageBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && buildStorageBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool isMarkTreesClicked(sf::Vector2i mousePos) {
-        return isVisible && markTreesBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && markTreesBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool handleClick(sf::Vector2i mousePos) {
@@ -94,18 +93,18 @@ public:
     bool isVisible() const { return isVisible_; }
     
     void draw() {
-        if (!isVisible) return;
+        if (!isVisible_) return;
         window_.draw(menuBackground);
         window_.draw(buildDoorBtn);
         window_.draw(buildWallBtn);
     }
 
     bool isBuildDoorClicked(sf::Vector2i mousePos) {
-        return isVisible && buildDoorBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && buildDoorBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool isBuildWallClicked(sf::Vector2i mousePos) {
-        return isVisible && buildWallBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && buildWallBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool handleClick(sf::Vector2i mousePos) {
