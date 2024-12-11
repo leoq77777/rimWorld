@@ -1,6 +1,4 @@
-#ifndef componentArray_hpp
-#define componentArray_hpp
-
+#pragma once
 #include "component.hpp"
 #include <cassert>
 #include <unordered_map>
@@ -83,5 +81,3 @@ private:
 	// Total size of valid entries in the array.
 	size_t array_size;
 };
-
-#endif // componentArray_hpp

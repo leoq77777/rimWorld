@@ -1,5 +1,4 @@
-#ifndef ENTITY_HPP
-#define ENTITY_HPP
+#pragma once
 #include "../components/componentManager.hpp"
 #include <queue>
 #include <bitset>
@@ -9,8 +8,11 @@
 class EntityManager {  
 public:
     EntityManager() {
-        //load_from_json();
+        for(int i = 0; i < MAX_ENTITIES; ++i) {
+            available_entities.push(i);
+        }
     }
+    
     Entity create_entity() {
         assert(living_entity_count < MAX_ENTITIES && "Too many entities in existence.");
         Entity id = available_entities.front();
@@ -101,4 +103,3 @@ private:
     std::queue<Entity> available_entities;
     std::bitset<MAX_ENTITIES> entity_used;
 };
-#endif //ENTITY_HPP

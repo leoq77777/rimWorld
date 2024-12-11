@@ -13,6 +13,7 @@ using Entities = std::vector<Entity>;
 using Field = std::pair<sf::Vector2i, sf::Vector2i>;
 using Location = sf::Vector2i;
 using Locations = std::vector<Location>;
+
 enum EntityType {
     CHARACTER,
     TREE,
@@ -60,19 +61,19 @@ struct Task {
     bool feasible;
 };
 
-struct locationComponent {
+struct LocationComponent {
     Location loc;
 };
 
-struct fieldComponent {
+struct FieldComponent {
     Field field;
 };
 
-struct collisionComponent {
+struct CollisionComponent {
     bool collidable;
 };
 
-struct moveComponent {
+struct MoveComponent {
     int speed;
 };
 

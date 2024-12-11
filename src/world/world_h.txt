@@ -1,0 +1,71 @@
+#pragma once
+#include "system/actionSystem.hpp"
+#include "system/taskSystem.hpp"
+#include "../entities/entity.hpp"
+#include "utils/path.hpp"
+#include <memory>
+#include <vector>
+#define MAP_SIZE 50
+#define TILE_SIZE 32
+#define MAX_DIST MAP_SIZE*MAP_SIZE
+#define DEFAULT_SPEED 32
+#define FRAMERATE 60
+
+class World {
+public:  
+    World();
+    
+    //Entity creations
+    Entity create_character(Location pos);
+    Entity create_tree(Location pos);
+    Entity create_wood(Location pos);
+    Entity create_wall(Location pos);
+    Entity create_door(Location pos);
+    Entity create_dog(Location pos);
+    Entity create_storage(Location pos);
+    Entity create_blueprint(EntityType entityType, int x, int y);
+    
+    //core logic
+    void update();
+
+    //utility maybe moved to other files
+    bool is_valid_position(Location pos);
+    
+    //functions operated by USER(maybe by UI)
+    void mark_tree();
+    void make_storage_area(Location start, Location end);
+    void set_door_blueprint(Location pos);
+    void set_wall_blueprint(Location pos);
+    
+    //more methods related to entity
+    std::vector<Entity> get_all_entities();
+    std::vector<std::vector<Entities>> load_entity_map();
+    void load_characters();
+    void load_animals();
+    void update_entities();
+    void generate_random_trees(int count);
+    void set_speed(Entity entity, int speed);
+
+    
+
+
+    //about world save and load
+    void save_world();
+    void load_world();
+    
+    //some containers, managers, systems
+    EntityManager entity_manager_;
+    ComponentManager component_manager_;
+
+    //std::shared_ptr<ActionSystem> action_system_;
+    //std::shared_ptr<TaskSystem> task_system_;
+
+    std::vector<Entity> characters_;
+    std::vector<Entity> animals_;
+    std::vector<std::vector<Entities>> entity_map_;
+    std::vector<std::vector<int>> mark_map_;
+private:
+    //starter function run every time
+    void register_all_components();
+    void init_world();
+};

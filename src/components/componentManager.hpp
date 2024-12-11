@@ -1,10 +1,9 @@
-    #ifndef manager_hpp
-    #define manager_hpp
-    #include <typeindex>
-    #include "componentArray.hpp"
-    #include <unordered_map>
-    #include <memory>
-    #include <cassert>
+#pragma once
+#include <typeindex>
+#include "componentArray.hpp"
+#include <unordered_map>
+#include <memory>
+#include <cassert>
     #include <iostream>
     class ComponentManager {
     public:
@@ -73,4 +72,3 @@
             return std::static_pointer_cast<ComponentArray<T>>(component_arrays[type_name]);
         }
     };
-    #endif //manager_hpp

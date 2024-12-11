@@ -1,5 +1,7 @@
 #pragma once
-#include "world/world.h"
+#include "world/world.hpp"
+#include "components/componentManager.hpp"
+#include "entities/entity.hpp"
 #include <queue>
 #include <algorithm>
 class TaskSystem {
@@ -147,7 +149,8 @@ public:
                 new_task = chop_task(target_entity);
             }
             //collect resource from tree
-            else if (render.entityType == EntityType::WOODPACK) {
+            else if (auto& resource = component_manager.get_component<ResourceComponent>(target_entity);
+                render.entityType == EntityType::WOODPACK && resource.holder == -1) {
                 new_task = collect_task(target_entity);
             }
             //allocate resource to blueprint
