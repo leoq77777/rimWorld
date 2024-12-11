@@ -1,16 +1,15 @@
 #pragma once
 #include "../entities/entity.hpp"
-//#include "utils/path.hpp"
+#include "utils/path.hpp"
 #include <memory>
 #include <vector>
 #include <iostream>
 
 #define MAP_SIZE 50
-#define TILE_SIZE 32
 #define MAX_DIST MAP_SIZE*MAP_SIZE
 #define DEFAULT_SPEED 32
 #define FRAMERATE 60
-
+#define TILE_SIZE 32
 class World {
 public:  
     World() {
@@ -90,7 +89,12 @@ Entity World::create_character(Location loc) {
     std::cout << "Entity " << entity << ": character created at (" << loc.x << ", " << loc.y << ")" << std::endl;
     LocationComponent location{loc};
     CollisionComponent collision{true};
-    MoveComponent move{0};
+    MovementComponent move{
+        .start_pos = loc,
+        .end_pos = loc,
+        .progress = 0.0f,
+        .speed = 0
+    };
     RenderComponent render{EntityType::CHARACTER, false, sf::Vector2f(loc.x * TILE_SIZE, loc.y * TILE_SIZE)};
     component_manager_.add_component(entity, location);
     component_manager_.add_component(entity, collision);
@@ -173,7 +177,12 @@ Entity World::create_dog(Location loc) {
     LocationComponent location{loc};
     CollisionComponent collision{true};
     RenderComponent render{EntityType::DOG, false, sf::Vector2f(loc.x * TILE_SIZE, loc.y * TILE_SIZE)};
-    MoveComponent move{0}; 
+    MovementComponent move{
+        .start_pos = loc,
+        .end_pos = loc,
+        .progress = 0.0f,
+        .speed = 0
+    };
     component_manager_.add_component(entity, location);
     component_manager_.add_component(entity, collision);
     component_manager_.add_component(entity, render);
@@ -296,8 +305,8 @@ void World::generate_random_trees(int count) {
 }
 
 void World::set_speed(Entity entity, int speed) {
-    assert(component_manager_.has_component<MoveComponent>(entity) && "Entity does not have moveComponent");
-    component_manager_.get_component<MoveComponent>(entity).speed = speed;
+    assert(component_manager_.has_component<MovementComponent>(entity) && "Entity does not have moveComponent");
+    component_manager_.get_component<MovementComponent>(entity).speed = speed;
 }
 
 void World::save_world() {
@@ -312,7 +321,7 @@ void World::register_all_components() {
     std::cout << "registering components: \nlocationComponent\ncollisionComponent\nmoveComponent\nResourceComponent\nRenderComponent\nConstructionComponent" << std::endl;
     component_manager_.register_component<LocationComponent>();
     component_manager_.register_component<CollisionComponent>();
-    component_manager_.register_component<MoveComponent>();
+    component_manager_.register_component<MovementComponent>();
     component_manager_.register_component<ResourceComponent>();
     component_manager_.register_component<RenderComponent>();
     component_manager_.register_component<ConstructionComponent>();

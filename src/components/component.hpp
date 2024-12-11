@@ -73,8 +73,11 @@ struct CollisionComponent {
     bool collidable;
 };
 
-struct MoveComponent {
-    int speed;
+struct MovementComponent {
+    Location start_pos;
+    Location end_pos;
+    float progress; // 0.0 到 1.0
+    float speed;    // 每秒移动的格子数
 };
 
 struct ResourceComponent {

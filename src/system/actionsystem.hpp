@@ -4,6 +4,8 @@
 #include "entities/entity.hpp"
 #include "utils/path.hpp"
 class ActionSystem {
+    static constexpr float BASE_MOVE_SPEED = 2.0f;  // 基础移动速度（格/秒）
+    static constexpr float DOG_SPEED_MULTIPLIER = 1.5f;  // 狗的速度倍率
 public:
     ActionSystem(World& new_world) 
         : world_(new_world), 
@@ -33,9 +35,9 @@ public:
 private:
     Action wander(Entity entity) {
         int direction = rand() % 4;
-        float speed = rand() % DEFAULT_SPEED;
         Location next_pos;
-        Location cur_pos = component_manager_.get_component<locationComponent>(entity).loc;
+        Location cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
+        
         if (direction == 0) {
             next_pos = {std::min(cur_pos.x + 1, MAP_SIZE - 1), cur_pos.y};
         } else if (direction == 1) {
@@ -45,17 +47,19 @@ private:
         } else if (direction == 3) {
             next_pos = {cur_pos.x, std::max(cur_pos.y - 1, 0)};
         }
+
         return Action{
             .type = ActionType::MOVE, 
             .target_location = next_pos, 
-            .duration = 0, 
-            .target_entity = entity};
+            .duration = 1.0f / BASE_MOVE_SPEED,  // 使用基础移动速度计算duration
+            .target_entity = entity
+        };
     }
 
     Action none_action(Entity entity) {
         return Action{
             .type = ActionType::NONE, 
-            .target_location = component_manager_.get_component<locationComponent>(entity).loc, 
+            .target_location = component_manager_.get_component<LocationComponent>(entity).loc, 
             .duration = 0, 
             .target_entity = entity};
     }
@@ -65,15 +69,16 @@ private:
         return Action{
             .type = ActionType::MOVE, 
             .target_location = next_pos, 
-            .duration = static_cast<float>(path.size() * 0.1), 
-            .target_entity = entity};
+            .duration = 1.0f / BASE_MOVE_SPEED,  // 使用基础移动速度计算duration
+            .target_entity = entity
+        };
     }
     
     void assign_action(Entity entity) {
         auto& action = component_manager_.get_component<ActionComponent>(entity);
         //consider only current task
         auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
-        auto& cur_pos = component_manager_.get_component<locationComponent>(entity).loc;
+        auto& cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
         auto& target_pos = task.target_locations;
 
         //isolately deal with idle task
@@ -126,10 +131,36 @@ private:
     //entity is character or animal
     void move(Entity entity) {
         auto& action = component_manager_.get_component<ActionComponent>(entity);
-        auto& cur_pos = component_manager_.get_component<locationComponent>(entity).loc;
-        auto& target_pos = action.target_location;
+        auto& cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
+        auto& target_pos = action.current_action.target_location;
+        
         if (cur_pos == target_pos) {
+            finish_action(entity);
             return;
+        }
+
+        if (!component_manager_.has_component<MovementComponent>(entity)) {
+            float speed = BASE_MOVE_SPEED;
+            // 根据实体类型设置不同速度
+            auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
+            if (type == EntityType::DOG) {
+                speed = BASE_MOVE_SPEED * 1.5f;
+            }
+            
+            component_manager_.add_component(entity, MovementComponent{
+                .start_pos = cur_pos,
+                .end_pos = target_pos,
+                .progress = 0.0f,
+                .speed = speed
+            });
+        }
+
+        auto& movement = component_manager_.get_component<MovementComponent>(entity);
+        movement.progress += movement.speed * (1.0f/FRAMERATE);
+
+        if (movement.progress >= 1.0f) {
+            cur_pos = target_pos;
+            component_manager_.remove_component<MovementComponent>(entity);
         }
     }
 
@@ -137,8 +168,8 @@ private:
     void chop(Entity entity) {
         auto& action = component_manager_.get_component<ActionComponent>(entity).current_action;
         auto& tree = action.target_entity;
-        auto& tree_pos = component_manager_.get_component<locationComponent>(tree).loc;
-        auto& entity_pos = component_manager_.get_component<locationComponent>(entity).loc;
+        auto& tree_pos = component_manager_.get_component<LocationComponent>(tree).loc;
+        auto& entity_pos = component_manager_.get_component<LocationComponent>(entity).loc;
         //every update is 1s / framerate(s), duration is 5s
         auto& track = component_manager_.get_component<TargetComponent>(tree);
         track.progress += 100 / action.duration * FRAMERATE;
@@ -156,7 +187,7 @@ private:
     void pick(Entity entity) {
         auto& action = component_manager_.get_component<ActionComponent>(entity).current_action;
         auto& target = action.target_entity;
-        auto& target_pos = component_manager_.get_component<locationComponent>(target).loc;
+        auto& target_pos = component_manager_.get_component<LocationComponent>(target).loc;
         auto& render = component_manager_.get_component<RenderComponent>(entity);
         auto& bag = component_manager_.get_component<StorageComponent>(entity);
         //PICK ACTION has target entity of RESOURCE or STORAGE
@@ -197,8 +228,8 @@ private:
     void place(Entity entity) {
         auto& action = component_manager_.get_component<ActionComponent>(entity);
         auto& site = action.target_entity;
-        auto& site_pos = component_manager_.get_component<locationComponent>(site).loc;
-        auto& entity_pos = component_manager_.get_component<locationComponent>(entity).loc;
+        auto& site_pos = component_manager_.get_component<LocationComponent>(site).loc;
+        auto& entity_pos = component_manager_.get_component<LocationComponent>(entity).loc;
 
         auto& carriage = component_manager_.get_component<StorageComponent>(entity);
         auto& storage = component_manager_.get_component<StorageComponent>(site);
