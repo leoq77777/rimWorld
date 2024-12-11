@@ -121,13 +121,6 @@ CMakeFiles/game.dir/src/main.cpp.obj: \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/istream.tcc \
  C:\Users\Leo\ Qin\Documents\code\proj\src\ui/ui.hpp \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/world/world.hpp \
- C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/entities/entity.hpp \
- C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/components/componentManager.hpp \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/typeindex \
- C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/components/componentArray.hpp \
- C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/components/component.hpp \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/utility \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_relops.h \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/Graphics.hpp \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/Window.hpp \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/System.hpp \
@@ -146,6 +139,8 @@ CMakeFiles/game.dir/src/main.cpp.obj: \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/System/String.hpp \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/System/Utf.hpp \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/algorithm \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/utility \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_relops.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_algo.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/algorithmfwd.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_heap.h \
@@ -248,27 +243,32 @@ CMakeFiles/game.dir/src/main.cpp.obj: \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/Graphics/Sprite.hpp \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/Graphics/Text.hpp \
  C:/Users/LEOQIN~1/DOCUME~1/code/proj/SFML-2~1.2/include/SFML/Graphics/VertexBuffer.hpp \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/list \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_list.h \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/allocated_ptr.h \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/list.tcc \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/cassert \
- C:/PROGRA~2/mingw64/x86_64-w64-mingw32/include/assert.h \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/unordered_map \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/hashtable.h \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/hashtable_policy.h \
- C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/unordered_map.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/memory \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_raw_storage_iter.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/ext/concurrence.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/unique_ptr.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/shared_ptr.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/shared_ptr_base.h \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/allocated_ptr.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/refwrap.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/shared_ptr_atomic.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/atomic_base.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/atomic_lockfree_defines.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/backward/auto_ptr.h \
+ C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/components/component.hpp \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/list \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_list.h \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/list.tcc \
+ C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/entities/entity.hpp \
+ C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/components/componentManager.hpp \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/typeindex \
+ C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/components/componentArray.hpp \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/cassert \
+ C:/PROGRA~2/mingw64/x86_64-w64-mingw32/include/assert.h \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/unordered_map \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/hashtable.h \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/hashtable_policy.h \
+ C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/unordered_map.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/queue \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/deque \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/stl_deque.h \
@@ -279,6 +279,7 @@ CMakeFiles/game.dir/src/main.cpp.obj: \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/x86_64-w64-mingw32/bits/basic_file.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/x86_64-w64-mingw32/bits/c++io.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/fstream.tcc \
+ C:/Users/LEOQIN~1/DOCUME~1/code/proj/src/utils/path.hpp \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/cmath \
  C:/PROGRA~2/mingw64/x86_64-w64-mingw32/include/math.h \
  C:/PROGRA~2/mingw64/lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++/bits/specfun.h \

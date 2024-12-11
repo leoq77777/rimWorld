@@ -149,6 +149,7 @@ public:
         sf::Clock clock;
         while (window.isOpen()) {
             handleEvents(clock);
+            world_.update();  // 确保世界状态更新
             draw();
         }
     }
@@ -287,27 +288,41 @@ private:
     }
 
     void handleSelectionMenuClick(sf::Vector2i mousePos) {
-        // 处理选择菜单的点击事件
         if (selectionMenu.isBuildStorageClicked(mousePos)) {
             std::cout << "Building storage area..." << std::endl;
-            // 实现建造存储区的逻辑
+            // 获取选中区域的起点和终点
+            Location start = {mousePressedPos.x / TILE_SIZE, mousePressedPos.y / TILE_SIZE};
+            Location end = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
+            // 创建存储区域，这会触发相关的建造任务
+            world_.make_storage_area(start, end);
         }
         else if (selectionMenu.isMarkTreesClicked(mousePos)) {
             std::cout << "Marking trees..." << std::endl;
-            // 实现标记树木的逻辑
+            // 标记选中的树木，这会触发伐木任务
+            world_.mark_tree();
         }
+        
+        // 操作完成后隐藏菜单
+        selectionMenu.hide();
     }
 
     void handleBuildMenuClick(sf::Vector2i mousePos) {
-        // 处理建造菜单的点击事件
+        // 获取右键点击的网格位置
+        Location buildPos = {rightClickPos.x / TILE_SIZE, rightClickPos.y / TILE_SIZE};
+        
         if (buildMenu.isBuildDoorClicked(mousePos)) {
             std::cout << "Building door..." << std::endl;
-            // 实现建造门的逻辑
+            // 创建门的蓝图，这会触发建造任务
+            world_.set_door_blueprint(buildPos);
         }
         else if (buildMenu.isBuildWallClicked(mousePos)) {
             std::cout << "Building wall..." << std::endl;
-            // 实现建造墙的逻辑
+            // 创建墙的蓝图，这会触发建造任务
+            world_.set_wall_blueprint(buildPos);
         }
+        
+        // 操作完成后隐藏菜单
+        buildMenu.hide();
     }
 
     void handleKeyPress(sf::Keyboard::Key key) {
@@ -344,7 +359,7 @@ private:
         }
     }
 
-    // 常量
+    // ��量
     static constexpr int WINDOW_WIDTH = 800;
     static constexpr int WINDOW_HEIGHT = 600;
     

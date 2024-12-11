@@ -1,6 +1,7 @@
 #pragma once
 #include "utils/path.hpp"
-class ActionSystem {
+#include "system/system_interface.hpp"
+class ActionSystem : public ISystem {
     static constexpr float BASE_MOVE_SPEED = 2.0f;  // 基础移动速度（格/秒）
     static constexpr float DOG_SPEED_MULTIPLIER = 1.5f;  // 狗的速度倍率
 public:
@@ -11,7 +12,7 @@ public:
         std::cout << "ActionSystem initialized" << std::endl;
     }
 
-    void update(float dt) {
+    void update() override {
         auto entities = world_.get_entities_with_components<TaskComponent>();
         for (auto entity : entities) {
             if (!component_manager_.has_component<ActionComponent>(entity)) {
@@ -65,7 +66,7 @@ private:
         auto& next_pos = path.front();
         return Action{
             .type = ActionType::MOVE, 
-            .target_location = next_pos, 
+            .target_location = Location{next_pos.first, next_pos.second}, 
             .duration = 1.0f / BASE_MOVE_SPEED,  // 使用基础移动速度计算duration
             .target_entity = entity
         };

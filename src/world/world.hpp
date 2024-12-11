@@ -1,8 +1,11 @@
 #pragma once
-#include "../entities/entity.hpp"
+#include <SFML/Graphics.hpp>
 #include <memory>
-#include <vector>
-#include <iostream>
+#include "../components/component.hpp"
+#include "../entities/entity.hpp"
+#include "../utils/path.hpp"
+#include "../system/actionsystem.hpp"
+#include "../system/taskSystem.hpp"
 
 #define MAP_SIZE 50
 #define MAX_DIST MAP_SIZE*MAP_SIZE
@@ -16,8 +19,19 @@ public:
         mark_map_.resize(MAP_SIZE, std::vector<int>(MAP_SIZE, -1));
         register_all_components();
         init_world(); 
+        
+        // 在构造函数中创建系统
+        action_system_ = std::make_unique<ActionSystem>(*this);
+        task_system_ = std::make_unique<TaskSystem>(*this);
     }
 
+    ~World() = default;  // 智能指针会自动清理
+
+    void update() {
+        task_system_->update();
+        action_system_->update();
+        update_entities();
+    }
     // managers
     EntityManager entity_manager_;
     ComponentManager component_manager_;
@@ -80,6 +94,9 @@ private:
     std::vector<Entity> animals_;
     std::vector<std::vector<Entities>> entity_map_;
     std::vector<std::vector<int>> mark_map_;
+
+    std::unique_ptr<ISystem> action_system_;
+    std::unique_ptr<ISystem> task_system_;
 };
 
 // 方法实现
@@ -204,68 +221,6 @@ Entity World::create_storage(Location loc) {
     component_manager_.add_component(entity, render);
     entity_map_[loc.x][loc.y].push_back(entity);
     return entity;
-}
-
-void World::update() {
-    // 更新所有实体状态
-    update_entities();
-    
-    // 更新角色移动
-    for(auto& entity : characters_) {
-        if(component_manager_.has_component<MovementComponent>(entity)) {
-            auto& movement = component_manager_.get_component<MovementComponent>(entity);
-            if(movement.speed > 0) {
-                movement.progress += movement.speed / (float)FRAMERATE;
-                if(movement.progress >= 1.0f) {
-                    // 移动完成，更新位置
-                    auto& location = component_manager_.get_component<LocationComponent>(entity);
-                    auto& render = component_manager_.get_component<RenderComponent>(entity);
-                    
-                    // 从旧位置的entity_map中移除
-                    auto& old_entities = entity_map_[location.loc.x][location.loc.y];
-                    old_entities.erase(std::remove(old_entities.begin(), old_entities.end(), entity), old_entities.end());
-                    
-                    // 更新位置
-                    location.loc = movement.end_pos;
-                    render.render_pos = sf::Vector2f(location.loc.x * TILE_SIZE, location.loc.y * TILE_SIZE);
-                    
-                    // 添加到新位置的entity_map
-                    entity_map_[location.loc.x][location.loc.y].push_back(entity);
-                    
-                    // 重置移动组件
-                    movement.start_pos = movement.end_pos;
-                    movement.progress = 0.0f;
-                    movement.speed = 0;
-                }
-            }
-        }
-    }
-    
-    // 更新动物移动（与角色类似）
-    for(auto& entity : animals_) {
-        if(component_manager_.has_component<MovementComponent>(entity)) {
-            auto& movement = component_manager_.get_component<MovementComponent>(entity);
-            if(movement.speed > 0) {
-                movement.progress += movement.speed / (float)FRAMERATE;
-                if(movement.progress >= 1.0f) {
-                    auto& location = component_manager_.get_component<LocationComponent>(entity);
-                    auto& render = component_manager_.get_component<RenderComponent>(entity);
-                    
-                    auto& old_entities = entity_map_[location.loc.x][location.loc.y];
-                    old_entities.erase(std::remove(old_entities.begin(), old_entities.end(), entity), old_entities.end());
-                    
-                    location.loc = movement.end_pos;
-                    render.render_pos = sf::Vector2f(location.loc.x * TILE_SIZE, location.loc.y * TILE_SIZE);
-                    
-                    entity_map_[location.loc.x][location.loc.y].push_back(entity);
-                    
-                    movement.start_pos = movement.end_pos;
-                    movement.progress = 0.0f;
-                    movement.speed = 0;
-                }
-            }
-        }
-    }
 }
 
 bool World::is_valid_position(Location loc) {
