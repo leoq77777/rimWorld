@@ -1,18 +1,42 @@
 #pragma once
 #include <cstdint>
 #include <utility>
-#include <SFML/Graphics.hpp>
 #include <list>
 #include <array>
+#include <vector>
+#include <functional>
+#include <deque>
 #define MAX_COMPONENTS 32
-#define MAX_ENTITIES 10000
  
 using ComponentType = std::uint8_t;
 using Entity = int;
 using Entities = std::vector<Entity>;
-using Field = std::pair<sf::Vector2i, sf::Vector2i>;
-using Location = sf::Vector2i;
+
+struct Location {
+    int x;
+    int y;
+    Location() : x(0), y(0) {}
+    Location(int x, int y) : x(x), y(y) {}
+    bool operator==(const Location& other) const {
+        return x == other.x && y == other.y;
+    }
+    bool operator!=(const Location& other) const {
+        return x != other.x || y != other.y;
+    }   
+};
+
+namespace std {  
+    template<>
+        struct hash<Location> {
+        size_t operator()(const Location& loc) const noexcept {
+            return hash<int>()(loc.x) ^ (hash<int>()(loc.y) << 1);
+        }
+    };
+}
+
 using Locations = std::vector<Location>;
+using RenderPos = std::pair<float, float>;
+using Field = std::pair<Location, Location>;
 
 enum EntityType {
     CHARACTER,
@@ -21,7 +45,8 @@ enum EntityType {
     WALL,
     DOOR,
     DOG,
-    STORAGE
+    STORAGE,
+    TEMP
 };
 
 //different tasks have different location requirements
@@ -49,7 +74,7 @@ struct Action {
     ActionType type;
     Location target_location; //accurate one point
     float duration;
-    Entity target_entity;
+    Entity target_entity; //entity to be acted on
 };
 
 //first reach target location, then do target action
@@ -88,7 +113,7 @@ struct ResourceComponent {
 struct RenderComponent {
     EntityType entityType;
     bool is_selected;
-    sf::Vector2f render_pos;
+    RenderPos render_pos;
 };
 
 struct ConstructionComponent {
@@ -96,11 +121,17 @@ struct ConstructionComponent {
     bool is_built;
 };
 
+struct CreateComponent {
+    bool to_be_created;
+    int amount;
+    EntityType entity_type;
+};
+
 //5 woods in one pack
 struct StorageComponent {
     int storage_capacity;
     int current_storage;
-    Entities stored_resources;
+    std::deque<Entity> stored_resources;
 };
 
 //character will have this

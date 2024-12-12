@@ -2,7 +2,7 @@
 #include "component.hpp"
 #include <cassert>
 #include <unordered_map>
-#include <array>
+#define MAX_ENTITIES 10000
 
 class IComponentArray
 {
