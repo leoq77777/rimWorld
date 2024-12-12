@@ -46,7 +46,7 @@ public:
     void update_world() {
         create_system_.update();
         task_system_.update();
-        //action_system_.update();
+        action_system_.update();
     }
     
     // Functions operated by USER (maybe by UI)

@@ -49,7 +49,7 @@ public:
 	}
 
 	T& get_data(Entity entity)
-	{
+	{	
 		assert(entity_to_index.find(entity) != entity_to_index.end() && "Retrieving non-existent component.");
 		return component_array[entity_to_index[entity]];
 	}

@@ -84,6 +84,7 @@ struct Task {
     int priority;
     Action target_action;
     bool feasible;
+    int id;
 };
 
 struct LocationComponent {

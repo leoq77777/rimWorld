@@ -181,7 +181,7 @@ public:
             if (!component_manager_.has_component<RenderComponent>(entity)) {
                 continue;
             }
-            
+
             auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
             if ( type == EntityType::STORAGE || 
                 ((type == EntityType::WALL || type == EntityType::DOOR) && 
@@ -197,6 +197,7 @@ public:
     }
 
     std::pair<std::string, Location> printer(Entity entity) {
+        //std::cout << "printer running at entity: " << entity << std::endl;
         auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
         std::string entity_type;
         if (type == EntityType::CHARACTER) {

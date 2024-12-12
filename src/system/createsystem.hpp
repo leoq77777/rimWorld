@@ -117,11 +117,17 @@ Entity CreateSystem::create_character(Location loc) {
     CollisionComponent collision{true};
     MovementComponent move{loc, loc, 0.0f, 0};
     RenderComponent render{EntityType::CHARACTER, false, RenderPos{loc.x * tile_size_, loc.y * tile_size_}};
-    
+    StorageComponent storage{
+        .storage_capacity = 1100,
+        .current_storage = 0,
+        .stored_resources = {}
+    };
+
     component_manager_.add_component(entity, location);
     component_manager_.add_component(entity, collision);
     component_manager_.add_component(entity, move);
     component_manager_.add_component(entity, render);
+    component_manager_.add_component(entity, storage);
     
     entity_map_[loc.x][loc.y].push_back(entity);
     characters_.push_back(entity);
