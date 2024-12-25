@@ -2,6 +2,9 @@
 #include "component.hpp"
 #include <cassert>
 #include <unordered_map>
+#include "../lib/nlohmann/json.hpp"
+#include <fstream>
+
 #define MAX_ENTITIES 10000
 
 class IComponentArray
@@ -9,6 +12,8 @@ class IComponentArray
 public:
 	virtual ~IComponentArray() = default;
 	virtual void entity_destroy(Entity entity) = 0;
+	virtual void save() const = 0;
+	virtual void load() = 0;
 };
 
 
@@ -31,17 +36,14 @@ public:
 	{
 		assert(entity_to_index.find(entity) != entity_to_index.end() && "Removing non-existent component.");
 
-        //put last element into the place of the removed element
 		size_t index_of_removed_entity = entity_to_index[entity];
 		size_t index_of_last_element = array_size - 1;
 		component_array[index_of_removed_entity] = component_array[index_of_last_element];
         
-        //update 2 maps
 		Entity entity_of_last_element = index_to_entity[index_of_last_element];
 		entity_to_index[entity_of_last_element] = index_of_removed_entity;
 		index_to_entity[index_of_removed_entity] = entity_of_last_element;
 
-        //delete old data
         component_array[index_of_last_element] = T();
 		entity_to_index.erase(entity);
 		index_to_entity.erase(index_of_last_element);
@@ -65,6 +67,48 @@ public:
 	bool has_data(Entity entity) {
 		return entity_to_index.find(entity) != entity_to_index.end();
 	}
+
+	void save() const {
+		std::string filename = "../saves/components/" + std::string(typeid(T).name()) + ".json";
+		nlohmann::json j;
+		for (const auto& pair : entity_to_index) {
+            Entity entity = pair.first;
+            size_t index = pair.second;
+            j[std::to_string(entity)] = component_array[index];
+        }
+
+        std::ofstream file(filename);
+        if (file.is_open()) {
+            file << j.dump(4); 
+            file.close();
+        } else {
+            std::cerr << "Error: Could not open file for saving: " << filename << std::endl;
+        }
+	}
+
+	void load() {
+		std::string filename = "../saves/components/" + std::string(typeid(T).name()) + ".json";
+		nlohmann::json j;
+
+		std::ifstream file(filename);
+        if (file.is_open()) {
+            file >> j;
+            file.close();
+
+            entity_to_index.clear();
+            index_to_entity.clear();
+            array_size = 0;
+
+            for (auto it = j.begin(); it != j.end(); ++it) {
+                Entity entity = std::stoi(it.key());
+                T component = it.value().get<T>();
+                insert_data(entity, component);
+            }
+        } else {
+            std::cerr << "Error: Could not open file for loading: " << filename << std::endl;
+        }
+	}
+
 private:
 	// The packed array of components (of generic type T),
 	// set to a specified maximum amount, matching the maximum number

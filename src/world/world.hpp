@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <random>
 #include "../entities/entity.hpp"
 #include "../utils/path.hpp"
 #include <SFML/Graphics.hpp>
@@ -11,7 +12,7 @@
 #define MAP_SIZE 50
 #define MAX_DIST MAP_SIZE*MAP_SIZE
 #define DEFAULT_SPEED 32
-#define FRAMERATE 60
+#define FRAMERATE 20
 #define TILE_SIZE 32
 class World {
     friend class UI;
@@ -29,16 +30,19 @@ public:
     Router router_;
     Controller controller_;
 
+    
+
     World() :
-          entity_map_(std::vector<std::vector<Entities>>(MAP_SIZE, std::vector<Entities>(MAP_SIZE))),
-          mark_map_(std::vector<std::vector<int>>(MAP_SIZE, std::vector<int>(MAP_SIZE, -1))),
           entity_manager_(),
           component_manager_(),
-          router_(component_manager_, entity_manager_, entity_map_, MAP_SIZE),
+          router_(component_manager_, entity_manager_, MAP_SIZE),
           controller_(entity_manager_, component_manager_),
-          create_system_(component_manager_, entity_manager_, router_, entity_map_, TILE_SIZE),
+          create_system_(component_manager_, entity_manager_, router_, TILE_SIZE),
           action_system_(component_manager_, entity_manager_, router_, MAP_SIZE, FRAMERATE),
-          task_system_(component_manager_, entity_manager_, router_, entity_map_) {
+          task_system_(component_manager_, entity_manager_, router_),
+          rng(static_cast<unsigned>(std::time(nullptr))), 
+          dist(0, MAP_SIZE - 1) {
+        std::cout << "starting a new world" << std::endl;
         register_all_components();
         init_world();
     }
@@ -56,16 +60,13 @@ public:
     bool set_wall_blueprint(Location pos);
 
     // More methods related to entity
-    std::vector<std::vector<Entities>> load_entity_map();
-    void load_characters();
-    void load_animals();
-    void generate_random_trees(int count);
+    void generate_random_entity(int count, EntityType type);
     void set_speed(Entity entity, int speed);
-
+    Entities get_all_entities() {return router_.get_all_entities();}
     // Related to UI
     int get_world_width() {return MAP_SIZE;}
     int get_world_height() {return MAP_SIZE;}
-
+    int get_woods_at_loc(Location loc);
     // About world save and load
     void save_world();
     void load_world();
@@ -78,8 +79,10 @@ private:
     // Some containers
     std::vector<Entity> characters_;
     std::vector<Entity> animals_;
-    std::vector<std::vector<Entities>> entity_map_;
-    std::vector<std::vector<int>> mark_map_;
+
+    // Random seed
+    std::mt19937 rng;
+    std::uniform_int_distribution<int> dist;
 };
 
 bool World::mark_tree() {
@@ -91,11 +94,20 @@ bool World::mark_tree() {
         auto& render = component_manager_.get_component<RenderComponent>(entity);
         if (render.entityType == EntityType::TREE
             && render.is_selected) {
+            //first select a tree will add a target component
             if (!component_manager_.has_component<TargetComponent>(entity)) {
-                component_manager_.add_component(entity, TargetComponent{0.0, 0.0, true, false, false, Entity()});
+                component_manager_.add_component(entity,
+                 TargetComponent{
+                    .progress = 0.0,
+                    .timer = 0.0,
+                    .is_target = true,
+                    .is_finished = false,
+                    .to_be_deleted = false,
+                    .hold_by = -1
+                });
             } 
             auto& target = component_manager_.get_component<TargetComponent>(entity);
-            target.is_target = true;
+            target.is_target = !target.is_target;
             marked = true;
         }
     }
@@ -127,66 +139,42 @@ bool World::make_storage_area(Location start, Location end) {
     return true;
 }
 
-std::vector<std::vector<Entities>> World::load_entity_map() {
-    std::vector<std::vector<Entities>> entity_map;
-    auto entities = router_.get_all_entities();
-    for(auto& entity : entities) {
-        auto loc = component_manager_.get_component<LocationComponent>(entity).loc;
-        entity_map[loc.x][loc.y].push_back(entity);
-        if (!component_manager_.has_component<RenderComponent>(entity)) {
-            continue;
-        }
-        auto type = component_manager_.get_component<RenderComponent>(entity).entityType;
-        if (type == EntityType::CHARACTER) {
-            characters_.push_back(entity);
-        }
-    }
-    return entity_map;
-}
 
-/*save and load
-void World::load_characters() {
-    // 实现代码...
-}
-
-void World::load_animals() {
-    // 实现代码...
-}
 void World::save_world() {
-    // 实现代码...
+    entity_manager_.save();
+    component_manager_.save();
 }
 
 void World::load_world() {
-    // 实现代码...
+    register_all_components();
+    entity_manager_.load();
+    component_manager_.load();
 }
-*/
 
-
-
-void World::generate_random_trees(int count) {
-    while (count > 0) {
-        int x = rand() % MAP_SIZE;
-        int y = rand() % MAP_SIZE;
-        Location loc{x, y};
-        std::cout << "try create tree at (" << x << ", " << y << ")" << std::endl;
-        if (router_.is_valid_position(loc)) {
-            Entity temp = entity_manager_.create_entity();
-            component_manager_.add_component(temp, LocationComponent{loc});
-            component_manager_.add_component(temp, CreateComponent{true, 1, EntityType::TREE});
-            --count;
-        }
-    }
-}
 
 void World::set_speed(Entity entity, int speed) {
     assert(component_manager_.has_component<MovementComponent>(entity) && "Entity does not have moveComponent");
     component_manager_.get_component<MovementComponent>(entity).speed = speed;
 }
 
+int World::get_woods_at_loc(Location loc) {
+    int count = 0;
+    for(auto& entity : router_.get_entities_with_components<RenderComponent>()) {
+        auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
+        if (type == EntityType::WOODPACK) {
+            auto& tree_loc = component_manager_.get_component<LocationComponent>(entity).loc;
+            auto& resource = component_manager_.get_component<ResourceComponent>(entity);
+            if (tree_loc == loc && resource.holder == -1) {
+                ++count;
+            }
+        }
+    }
+    return count;
+}
+
 void World::register_all_components() {
     std::cout << "registering components: \nlocationComponent\ncollisionComponent\nmoveComponent\nResourceComponent\nRenderComponent\nConstructionComponent" << std::endl;
     component_manager_.register_component<LocationComponent>();
-    component_manager_.register_component<CollisionComponent>();
     component_manager_.register_component<MovementComponent>();
     component_manager_.register_component<ResourceComponent>();
     component_manager_.register_component<RenderComponent>();
@@ -195,25 +183,29 @@ void World::register_all_components() {
     component_manager_.register_component<TaskComponent>();
     component_manager_.register_component<TargetComponent>();
     component_manager_.register_component<CreateComponent>();
+    component_manager_.register_component<ActionComponent>();
+}
+
+void World::generate_random_entity(int count, EntityType type) {
+    while (count > 0) {
+        int x = dist(rng);
+        int y = dist(rng);
+        Location loc{x, y};
+        std::cout << "try create tree at (" << x << ", " << y << ")" << std::endl;
+        if (router_.is_valid_position(loc)) {
+            Entity temp = entity_manager_.create_entity();
+            component_manager_.add_component(temp, LocationComponent{loc});
+            component_manager_.add_component(temp, CreateComponent{true, 1, type});
+            --count;     
+        }
+    }
 }
 
 void World::init_world() {
     std::cout << "initializing world" << std::endl;
-    int spawn_x = rand()%MAP_SIZE / 2;
-    int spawn_y = rand()%MAP_SIZE / 2;
-    std::cout << "try create character at (" << spawn_x << ", " << spawn_y << ")" << std::endl;
-    Entity temp_character = entity_manager_.create_entity();
-    component_manager_.add_component(temp_character, LocationComponent{Location{spawn_x, spawn_y}});
-    component_manager_.add_component(temp_character, CreateComponent{true, 1, EntityType::CHARACTER});
-    
-    std::cout << "try create dog at (" << spawn_x + 1 << ", " << spawn_y + 1 << ")" << std::endl;
-    Entity temp_dog = entity_manager_.create_entity();
-    component_manager_.add_component(temp_dog, LocationComponent{Location{spawn_x + 1, spawn_y + 1}});
-    component_manager_.add_component(temp_dog, CreateComponent{true, 1, EntityType::DOG});
-    
-    std::cout << "try generate 10 trees" << std::endl;
-    generate_random_trees(10);
-
+    generate_random_entity( 2, EntityType::CHARACTER );
+    generate_random_entity( 1, EntityType::DOG );
+    generate_random_entity( 10, EntityType::TREE );
     create_system_.update();
 }
 

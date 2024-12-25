@@ -24,9 +24,29 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2b239d1b-54fa-4f69-a3e9-8333a50e93d2" name="更改" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/.cmake/api/v1/reply/cache-v2-e604c87439cfbeb89e0c.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/.cmake/api/v1/reply/cmakeFiles-v1-f2123eedd4329c0b17ab.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/.cmake/api/v1/reply/codemodel-v2-3801898928a1bef24613.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/.cmake/api/v1/reply/index-2024-12-12T06-20-44-0962.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/.cmake/api/v1/reply/target-game-Debug-0c40f02f29007f4f3c3b.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeCache.txt" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeCache.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/Makefile.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/Makefile.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/game.dir/compiler_depend.internal" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/game.dir/compiler_depend.internal" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/game.dir/compiler_depend.make" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/game.dir/compiler_depend.make" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/game.dir/objects.a" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/game.dir/objects.a" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/game.dir/src/main.cpp.obj" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/game.dir/src/main.cpp.obj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/game.dir/src/main.cpp.obj.d" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/game.dir/src/main.cpp.obj.d" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/game.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/game.exe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/component.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/component.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/system/actionsystem.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/system/actionsystem.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/system/createsystem.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/system/createsystem.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/system/taskSystem.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/system/taskSystem.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/ui.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/ui.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/path.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/path.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/world/world.hpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/world/world.hpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -89,6 +109,7 @@
       <updated>1733935749978</updated>
       <workItem from="1733935751127" duration="1398000" />
       <workItem from="1733983172827" duration="92000" />
+      <workItem from="1734351943388" duration="20000" />
     </task>
     <servers />
   </component>

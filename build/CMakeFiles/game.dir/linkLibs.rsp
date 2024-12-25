@@ -1,1 +1,1 @@
- "D:/desktop/gamedev/proj/SFML-2.6.2/lib/libsfml-graphics-d.a" "D:/desktop/gamedev/proj/SFML-2.6.2/lib/libsfml-window-d.a" "D:/desktop/gamedev/proj/SFML-2.6.2/lib/libsfml-system-d.a" -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 
+ "D:/desktop/gamedev/proj/lib/SFML-2.6.2/lib/libsfml-graphics-d.a" "D:/desktop/gamedev/proj/lib/SFML-2.6.2/lib/libsfml-window-d.a" "D:/desktop/gamedev/proj/lib/SFML-2.6.2/lib/libsfml-system-d.a" -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 

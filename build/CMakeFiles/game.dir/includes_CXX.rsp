@@ -1,1 +1,1 @@
--ID:/desktop/gamedev/proj/src -isystem "D:/desktop/gamedev/proj/SFML-2.6.2/include"
+-ID:/desktop/gamedev/proj/src -I"D:/desktop/gamedev/proj/SFML-2.6.2/include" -isystem "D:/desktop/gamedev/proj/lib/SFML-2.6.2/include"

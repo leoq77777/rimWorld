@@ -14,16 +14,16 @@ const std::vector<Dir> directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
 class Router {
     ComponentManager& component_manager_;
     EntityManager& entity_manager_;
-    std::vector<std::vector<Entities>>& entity_map_;
-    int MAP_SIZE;
+    std::vector<std::vector<bool>> mark_map_;
+    int MAP_SIZE_;
 public:
     Router();
     
-    Router(ComponentManager& component_manager, EntityManager& entity_manager, std::vector<std::vector<Entities>>& entity_map, int map_size) :
+    Router(ComponentManager& component_manager, EntityManager& entity_manager, int map_size) :
         component_manager_(component_manager),
         entity_manager_(entity_manager),
-        entity_map_(entity_map),
-        MAP_SIZE(map_size) {
+        MAP_SIZE_(map_size) {
+            mark_map_.resize(MAP_SIZE_, std::vector<bool>(MAP_SIZE_, false));
             std::cout << "Router initialized" << std::endl;
         }
 
@@ -44,40 +44,65 @@ public:
         return pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY;
     }
     
-    bool is_valid_position(const Location& pos) {
-        if (pos.x < 0 || pos.x >= MAP_SIZE || pos.y < 0 || pos.y >= MAP_SIZE) {
-            return false;
-        }
-
-        Entities entities = entity_map_[pos.x][pos.y];
-        for(auto& entity : entities) {
-            if (component_manager_.has_component<CollisionComponent>(entity)) {
-                CollisionComponent collision = component_manager_.get_component<CollisionComponent>(entity);
-                if(collision.collidable) {
-                    return false;
-                }
+    void update_collision() {
+        for(auto& entity : get_entities_with_components<RenderComponent>()) {
+            if (component_manager_.has_component<TargetComponent>(entity)) {
+                auto& target = component_manager_.get_component<TargetComponent>(entity);
+                if (target.to_be_deleted) 
+                    continue;
+            }
+            auto collision = component_manager_.get_component<RenderComponent>(entity).collidable;
+            if (collision == true) {    
+                auto& loc = component_manager_.get_component<LocationComponent>(entity).loc;
+                mark_map_[loc.x][loc.y] = true;
             }
         }
-        //std::cout << "valid position at (" << pos.x << ", " << pos.y << ")" << std::endl;
-        return true;
+    }
+
+    bool is_valid_position(const Location& pos) {
+        if (pos.x < 0 || pos.x >= MAP_SIZE_ || pos.y < 0 || pos.y >= MAP_SIZE_)
+            return false;
+        update_collision();
+        return !mark_map_[pos.x][pos.y];
     }
 
     Locations get_locations_around(const Location& pos) {
         Locations locations;
         for(int i = -1; i <= 1; ++i) {
             for(int j = -1; j <= 1; ++j) {
-                if (i == 0 && j == 0 || pos.x + i < 0 || pos.x + i >= MAP_SIZE || pos.y + j < 0 || pos.y + j >= MAP_SIZE) continue;
+                if (i == 0 && j == 0 || pos.x + i < 0 || pos.x + i >= MAP_SIZE_ || pos.y + j < 0 || pos.y + j >= MAP_SIZE_) continue;
                 locations.push_back({pos.x + i, pos.y + j});
             }
         }
         return locations;
     }
 
+    bool is_move_finished(Entity entity) {
+        if (!component_manager_.has_component<MovementComponent>(entity)) {
+            return true;
+        }
+        auto& move = component_manager_.get_component<MovementComponent>(entity);
+        return move.progress >= 1.0 || move.progress <= 0.0 || (move.start_pos == move.end_pos);
+    }
+
+    bool is_reachable(const Location& start, const Locations& end_locations) {
+        if (find_path_to_locations(start, end_locations).size() != 0) {
+            return true;
+        } else {
+            for(auto& end_location : end_locations) {
+                if (end_location == start) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     Path find_path_to_locations(const Location& start, const Locations& end_locations) {
         for (int i = 0; i < end_locations.size(); ++i) {
             auto path = find_path(start, end_locations[i]);
             if (path.size() > 0) {
-                std::cout << "path found for one end!" << std::endl;
+                //std::cout << "path found for one end!" << std::endl;
                 return path;
             }
         }
@@ -85,7 +110,7 @@ public:
     }
 
     Path find_path(const Location& start, const Location& end) {
-        std::cout << "try to find path from (" << start.x << ", " << start.y << ") to (" << end.x << ", " << end.y << ")" << std::endl;
+        //std::cout << "try to find path from (" << start.x << ", " << start.y << ") to (" << end.x << ", " << end.y << ")" << std::endl;
         if (start == end) return {};
 
         std::queue<Location> queue;
@@ -136,7 +161,15 @@ public:
     }
 
     Entities get_entity_at_location(const Location& pos) {
-        return entity_map_[pos.x][pos.y];
+        Entities entities;
+        for(auto& entity : get_all_entities()) {
+            if (component_manager_.has_component<LocationComponent>(entity)) {
+                auto& loc = component_manager_.get_component<LocationComponent>(entity).loc;
+                if (loc == pos)
+                    entities.emplace_back(entity);
+            }
+        }
+        return entities;
     }
 
     Entities get_characters() {
@@ -198,6 +231,10 @@ public:
 
     std::pair<std::string, Location> printer(Entity entity) {
         //std::cout << "printer running at entity: " << entity << std::endl;
+        if (!component_manager_.has_component<RenderComponent>(entity)) {
+            std::cout << "wrong, has no render component" << std::endl;
+            return {"unknown", {0, 0}};
+        }
         auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
         std::string entity_type;
         if (type == EntityType::CHARACTER) {
@@ -223,6 +260,17 @@ public:
             Location loc = printer(entity).second;
             std::cout << "Entity " << entity << " is alive, type: " << type << std::endl;
         }
+    }
+
+    void print_character_current_task(Entity entity) {
+        assert(component_manager_.has_component<TaskComponent>(entity));
+        std::cout << "character " << entity << " is doing task: " << std::endl;
+        auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
+        task.print_task_info();
+    }
+
+    int get_map_size() {
+        return MAP_SIZE_;
     }
 };
 

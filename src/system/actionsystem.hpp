@@ -1,8 +1,10 @@
 #pragma once
 #include "utils/path.hpp"
+#include <cassert>
 class ActionSystem {
-    static constexpr float BASE_MOVE_SPEED = 2.0f;  // 基础移动速度（格/秒）
-    static constexpr float DOG_SPEED_MULTIPLIER = 1.5f;  // 狗的速度倍率
+    static constexpr float BASE_MOVE_SPEED = 0.5f; 
+    static constexpr float DOG_SPEED_MULTIPLIER = 1.5f;  
+    static constexpr float HAS_TASK_BOOSTER = 2.0f;
     ComponentManager& component_manager_;
     EntityManager& entity_manager_;
     Router& router_;
@@ -20,45 +22,153 @@ public:
     }
 
     void update()  {
+        bool print = true;
+        std::cout << "try update action" << std::endl;
         auto entities = router_.get_entities_with_components<TaskComponent>();
+        
         for (auto entity : entities) {
+            auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
+            if (type == EntityType::DOG) {
+                //std::cout << "do not print dog action" << std::endl;
+                print = false;
+            }
+
             if (!component_manager_.has_component<ActionComponent>(entity)) {
-                continue;
+                if (print) std::cout << "add action component to entity " << entity << std::endl;
+                component_manager_.add_component(entity, ActionComponent{
+                    .current_action = none_action(entity),
+                    .action_finished = false
+                });
             }
 
             auto& action = component_manager_.get_component<ActionComponent>(entity);
             auto& task = component_manager_.get_component<TaskComponent>(entity);
-            
+            if (print) std::cout << "try update action of entity " << entity << std::endl;
             //assign action based on current task
-            assign_action(entity);
+            assign_action(entity, print);
 
             //execute
-            execute_current_action(entity);
+            execute_current_action(entity, print);
         }
     }
 
 private:
-    Action wander(Entity entity) {
-        int direction = rand() % 4;
-        Location next_pos;
-        Location cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
+    
+
+    void assign_action(Entity entity, bool print) {
+        if (print) std::cout << "try assign action to entity " << entity << std::endl;
+        auto& action = component_manager_.get_component<ActionComponent>(entity);
+        //consider only current task
+        auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
+        auto& cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
+        auto& target_pos = task.target_locations;
         
-        if (direction == 0) {
-            next_pos = {std::min(cur_pos.x + 1, map_size_ - 1), cur_pos.y};
-        } else if (direction == 1) {
-            next_pos = {std::max(cur_pos.x - 1, 0), cur_pos.y};
-        } else if (direction == 2) {
-            next_pos = {cur_pos.x, std::min(cur_pos.y + 1, map_size_ - 1)};
-        } else if (direction == 3) {
-            next_pos = {cur_pos.x, std::max(cur_pos.y - 1, 0)};
+        router_.print_character_current_task(entity);
+
+        //isolately deal with idle task
+        if (task.type == TaskType::IDLE && router_.is_move_finished(entity)) {
+            if (print) std::cout << "assign idle action to this entity " << entity << std::endl;
+            action.current_action = wander(entity);
+            action.action_finished = false;
+            return;
+        } else if (task.type == TaskType::IDLE) {
+            return;
         }
 
-        return Action{
-            .type = ActionType::MOVE, 
-            .target_location = next_pos, 
-            .duration = 1.0f / BASE_MOVE_SPEED,  // 使用基础移动速度计算duration
-            .target_entity = entity
-        };
+        if (!is_character_available(entity)) {
+            if (print) std::cout << "entity is in action, skip. Action Target: " << action.current_action.target_entity << std::endl;
+            return;
+        }
+
+        //arrive at target location, take some action if needed
+        if (router_.is_in_locations(cur_pos, target_pos)) {
+            if (print) std::cout << "entity arrives at target location" << std::endl;
+            if (is_character_available(entity) || 
+                (!action.in_progress && !action.action_finished)) {
+                action.current_action = task.target_action;
+                action.in_progress = true;
+                std::cout << "entity arrives at target location, start action" << std::endl;
+            } else {
+                if (print) std::cout << "entity is in action, skip. Action Target: " << action.current_action.target_entity << std::endl;
+            }
+        } else {
+            if (print) std::cout << "entity does not arrive at target location, update path and move" << std::endl;
+            //update path, and move
+            Path path = router_.find_path_to_locations(cur_pos, target_pos);
+            //could not reach target location, set task unfeasible
+            if (!router_.is_reachable(cur_pos, target_pos)) {
+                if (print) std::cout << "entity cannot reach target location, set task unfeasible" << std::endl;
+                task.feasible = false;
+                return;
+            }   
+            //move
+            if (print) std::cout << "entity " << entity << " current action is move" << std::endl;
+            action.current_action = move_action(entity, path);
+            action.action_finished = false;
+        }
+    }
+    
+    void execute_current_action(Entity entity, bool print) {
+        if (print) std::cout << "entity " << entity << " execute current action" << std::endl;
+        auto& action = component_manager_.get_component<ActionComponent>(entity);
+        auto& current_action = action.current_action;
+        action.in_progress = true;
+        action.action_finished = false;
+        if (current_action.type == ActionType::MOVE) {
+            move(entity);
+        }
+        else if (current_action.type == ActionType::CHOP) {
+            chop(entity);
+        }
+        else if (current_action.type == ActionType::PICK) {
+            pick(entity);
+        }
+        else if (current_action.type == ActionType::PLACE) {
+            place(entity);
+        }
+        else if (current_action.type == ActionType::BUILD) {
+            build(entity);
+        }
+    }
+
+    //doing nothing(different from idle task)
+    bool is_character_available(Entity entity) {
+        if (!component_manager_.has_component<ActionComponent>(entity)) {
+            return true;
+        }
+        assert(component_manager_.has_component<TaskComponent>(entity));
+        auto& task = component_manager_.get_component<TaskComponent>(entity);
+        auto& action = component_manager_.get_component<ActionComponent>(entity);
+        return action.current_action.type == ActionType::NONE || task.current_task.type == TaskType::IDLE;
+    }
+
+    void finish_current_action(Entity entity) {
+        bool process_move = false;
+        std::cout << "entity " << entity << " finishes action" << std::endl;
+        assert(component_manager_.has_component<ActionComponent>(entity));
+        auto& action = component_manager_.get_component<ActionComponent>(entity);
+        
+        //how can an entity without task component finish an action?
+        assert(component_manager_.has_component<TaskComponent>(entity));
+        auto& task = component_manager_.get_component<TaskComponent>(entity);
+         //if during a task, entity finishes move action,
+        //current task won't be replaced by idle task
+        if (task.current_task.type != TaskType::IDLE && action.current_action.type == ActionType::MOVE
+            || task.current_task.type == TaskType::IDLE) {
+            process_move = true;
+        }
+
+        //set current action to none
+        action.current_action = none_action(entity);
+        //action.action_finished = true;
+        //action.in_progress = false;
+       
+        
+        //this guarantees that current task won't be replaced by idle task
+        //if it is just moving to target location of task
+        if(!process_move) {
+            task.current_task.finished = true;
+        }
     }
 
     Action none_action(Entity entity) {
@@ -79,221 +189,331 @@ private:
         };
     }
     
-    void assign_action(Entity entity) {
-        auto& action = component_manager_.get_component<ActionComponent>(entity);
-        //consider only current task
-        auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
-        auto& cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
-        auto& target_pos = task.target_locations;
-
-        //isolately deal with idle task
-        if (task.type == TaskType::IDLE) {
-            action.current_action = wander(entity);
-            return;
+    Action wander(Entity entity) {
+        int direction = rand() % 4;
+        Location next_pos;
+        Location cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
+        
+        if (direction == 0) {//move right
+            next_pos = {std::min(cur_pos.x + 1, map_size_ - 1), cur_pos.y};
+        } else if (direction == 1) {//move left
+            next_pos = {std::max(cur_pos.x - 1, 0), cur_pos.y};
+        } else if (direction == 2) {//move up
+            next_pos = {cur_pos.x, std::min(cur_pos.y + 1, map_size_ - 1)};
+        } else if (direction == 3) {//move down
+            next_pos = {cur_pos.x, std::max(cur_pos.y - 1, 0)};
         }
 
-        //arrive at target location, take some action if needed
-        if (router_.is_in_locations(cur_pos, target_pos)) {
-            action.current_action = task.target_action;
-        } else {
-            //update path, and move
-            Path path = router_.find_path_to_locations(cur_pos, target_pos);
-            //could not reach target location, set task unfeasible
-            if (path.empty()) {
-                task.feasible = false;
-                return;
-            }   
-            //move
-            action.current_action = move_action(entity, path);
-        }
-    }
-    
-    void execute_current_action(Entity entity) {
-        auto& current_action = component_manager_.get_component<ActionComponent>(entity).current_action;
-        if (current_action.type == ActionType::MOVE) {
-            move(entity);
-        }
-        else if (current_action.type == ActionType::CHOP) {
-            chop(entity);
-        }
-        else if (current_action.type == ActionType::PICK) {
-            pick(entity);
-        }
-        else if (current_action.type == ActionType::PLACE) {
-            place(entity);
-        }
-        else if (current_action.type == ActionType::BUILD) {
-            build(entity);
-        }
-    }
-
-    void finish_action(Entity entity) {
-        auto& action = component_manager_.get_component<ActionComponent>(entity);
-        action.current_action = none_action(entity);
+        return Action{
+            .type = ActionType::MOVE, 
+            .target_location = next_pos, 
+            .duration = 1.0f / BASE_MOVE_SPEED,
+            .target_entity = entity
+        };
     }
 
     //entity is character or animal
     void move(Entity entity) {
+        std::cout << "entity " << entity << " move" << std::endl;
         auto& action = component_manager_.get_component<ActionComponent>(entity);
         auto& cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
         auto& target_pos = action.current_action.target_location;
-        
+        std::cout << "is moving from " << cur_pos.x << ", " << cur_pos.y << " to " << target_pos.x << ", " << target_pos.y << std::endl;
         if (cur_pos == target_pos) {
-            finish_action(entity);
+            finish_current_action(entity);
             return;
         }
 
+        float speed = BASE_MOVE_SPEED;
+        auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
+        //dog moves faster
+        if (type == EntityType::DOG) {
+            speed = BASE_MOVE_SPEED * 1.5f;
+        }
+        //if entity is doing task, boost its speed
+        if (type == EntityType::CHARACTER && !is_character_available(entity)) {
+            speed *= HAS_TASK_BOOSTER;
+        }
+
         if (!component_manager_.has_component<MovementComponent>(entity)) {
-            float speed = BASE_MOVE_SPEED;
-            // 根据实体类型设置不同速度
-            auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
-            if (type == EntityType::DOG) {
-                speed = BASE_MOVE_SPEED * 1.5f;
-            }
-            
             component_manager_.add_component(entity, MovementComponent{
                 .start_pos = cur_pos,
                 .end_pos = target_pos,
                 .progress = 0.0f,
                 .speed = speed
             });
-        }
+        } 
 
         auto& movement = component_manager_.get_component<MovementComponent>(entity);
+        //update movement component
+        movement.speed = speed;
+        movement.start_pos = cur_pos;
+        movement.end_pos = target_pos;
         movement.progress += movement.speed * (1.0f / framerate_);
-
+        
         if (movement.progress >= 1.0f) {
             cur_pos = target_pos;
-            component_manager_.remove_component<MovementComponent>(entity);
+            //reset movement
+            movement = MovementComponent{
+                .start_pos = cur_pos,
+                .end_pos = cur_pos,
+                .progress = 0.0f,
+                .speed = BASE_MOVE_SPEED,
+                .move_finished = true
+            };
+            
         }
     }
 
     //entity is character
     void chop(Entity entity) {
+        std::cout << "entity " << entity << " chop" << std::endl;
         auto& action = component_manager_.get_component<ActionComponent>(entity).current_action;
         auto& tree = action.target_entity;
+        if (!component_manager_.has_component<TargetComponent>(tree) || 
+            !component_manager_.get_component<TargetComponent>(tree).is_target) {
+            std::cout << "chop target: " << tree << "is not a target" << std::endl;
+            return;
+        }
+        std::cout << "chop target: " << tree << std::endl;
         auto& tree_pos = component_manager_.get_component<LocationComponent>(tree).loc;
         auto& entity_pos = component_manager_.get_component<LocationComponent>(entity).loc;
         //every update is 1s / framerate(s), duration is 5s
         auto& track = component_manager_.get_component<TargetComponent>(tree);
-        track.progress += 100 / action.duration * framerate_;
-        if (track.progress >= action.duration) {
+        track.progress += 100 / (action.duration * framerate_);
+        std::cout << "chop progress:" << track.progress << std::endl;
+        if (track.progress >= 100) {
+            //mark this target so that TaskSystem knows it's finished
             track.is_finished = true;
-            track.to_be_deleted = true;
-            finish_action(entity);
+            //in Tasksystem, if a target of tree is finished, it will be marked 'to delete'
+            //thus createsystem knows this tree should be deleted
+            
+            finish_current_action(entity);
+            
             //temporary entity wait for create system to create actual entity(woodpack)
             Entity temp_entity = entity_manager_.create_entity();
-            component_manager_.add_component(temp_entity, LocationComponent{tree_pos});
+            Location loc = tree_pos;
+            component_manager_.add_component(temp_entity, LocationComponent{loc});
             component_manager_.add_component(temp_entity, CreateComponent{true, 11, EntityType::WOODPACK});
         }
     }
 
     //entity is character
     void pick(Entity entity) {
+        std::cout << "entity " << entity << " pick" << std::endl;
         auto& action = component_manager_.get_component<ActionComponent>(entity).current_action;
         auto& target = action.target_entity;
+        std::cout << "pick target: " << target << std::endl;
         auto& target_pos = component_manager_.get_component<LocationComponent>(target).loc;
-        auto& render = component_manager_.get_component<RenderComponent>(entity);
+        auto& target_type = component_manager_.get_component<RenderComponent>(target).entityType;
         auto& bag = component_manager_.get_component<StorageComponent>(entity);
+        std::cout << "bag current storage: " << bag.current_storage << std::endl;
+        std::cout << "bag storage capacity: " << bag.storage_capacity << std::endl;
         //PICK ACTION has target entity of RESOURCE or STORAGE
-        if (render.entityType == EntityType::WOODPACK) {
-            for(auto& pack : router_.get_entity_at_location(target_pos)) {//one unit has 5 woodpacks
-                if (component_manager_.get_component<RenderComponent>(pack).entityType != EntityType::WOODPACK) {
-                    continue;
-                }
-                auto& resource = component_manager_.get_component<ResourceComponent>(pack);
-                auto& amount = resource.amount;
-                auto& holder = resource.holder;
-                if (bag.storage_capacity - bag.current_storage >= 5) {
-                    bag.current_storage += amount;
-                    bag.stored_resources.emplace_back(target);
-                    holder = entity;
-                }
+        //TASK: COLLECT
+        if (target_type == EntityType::WOODPACK) {
+            auto pack = target;//one unit has 5 woodpacks
+            if (component_manager_.get_component<RenderComponent>(pack).entityType != EntityType::WOODPACK) {
+                std::cout << "pick target is not woodpack" << std::endl;
+                return;
             }
-            finish_action(entity);
-        } else if (render.entityType == EntityType::STORAGE) {
-            for(auto& pack : router_.get_entity_at_location(target_pos)) {//one unit has ? packs
-                if (component_manager_.get_component<RenderComponent>(pack).entityType != EntityType::WOODPACK) {
-                    continue;
-                }
-                auto& resource = component_manager_.get_component<ResourceComponent>(pack);
-                auto& amount = resource.amount;
-                auto& holder = resource.holder;
-                if (bag.storage_capacity - bag.current_storage >= 5) {
-                    bag.current_storage += amount;
-                    bag.stored_resources.emplace_back(target);
-                    holder = entity;
-                }
+            auto& resource = component_manager_.get_component<ResourceComponent>(pack);
+            auto& amount = resource.amount;
+            auto& holder = resource.holder;
+            //why if? because function is called only on 1 pack of woods
+            if (bag.storage_capacity - bag.current_storage >= 5) {
+                bag.current_storage += amount;
+                bag.stored_resources.emplace_back(target);
+                holder = entity;
+                //once a pack of woods is picked/collected, it is not a target anymore
+                auto& track = component_manager_.get_component<TargetComponent>(target);
+                track.is_finished = true;
+                std::cout << "target pack collection " << pack << " is finished" << std::endl;
             }
-            finish_action(entity);
+            finish_current_action(entity);
+            //TASK: OBTAIN
+        } else if (target_type == EntityType::STORAGE) {
+            assert(component_manager_.has_component<StorageComponent>(target));
+            auto& storage = component_manager_.get_component<StorageComponent>(target);
+            
+            int amount = 5;
+            //obtain only 5 woods at one time
+            if (bag.storage_capacity - bag.current_storage >= amount) {
+                if (storage.stored_resources.empty()) {
+                    std::cout << "storage is empty" << std::endl;
+                    finish_current_action(entity);
+                    return;
+                }
+                auto one_pack = storage.stored_resources.front();
+
+                //transfer resource from storage to bag
+                auto& resource = component_manager_.get_component<ResourceComponent>(one_pack);
+                auto& holder = resource.holder;
+
+                //update amount
+                bag.current_storage += amount;
+                storage.current_storage -= amount;
+
+                //transfer ownership
+                bag.stored_resources.emplace_back(one_pack);
+                holder = entity;
+                storage.stored_resources.pop_front();
+
+                std::cout << "pick " << amount << " woods from " << target << " to " << entity << std::endl;
+                std::cout << "now bag carries " << bag.current_storage << " woods" << std::endl;
+                //auto& track = component_manager_.get_component<TargetComponent>(one_pack);
+                //track.is_finished = true;
+            }
+            finish_current_action(entity);
+
+            /* to delete
+            auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
+            task.finished = true;
+            //THIS IS IMPORTANT, or tasksystem doesn't know this task is finished
+            */
         }
+        std::cout << "after pick, bag current storage: " << bag.current_storage << std::endl;
     }
 
     //entity is character
     void place(Entity entity) {
+        std::cout << "entity " << entity << " place" << std::endl;
         auto& action = component_manager_.get_component<ActionComponent>(entity).current_action;
         auto& site = action.target_entity;
+        std::cout << "place target: " << site << std::endl;
         auto& site_pos = component_manager_.get_component<LocationComponent>(site).loc;
         auto& entity_pos = component_manager_.get_component<LocationComponent>(entity).loc;
-
         auto& carriage = component_manager_.get_component<StorageComponent>(entity);
         auto& storage = component_manager_.get_component<StorageComponent>(site);
         
         auto& render = component_manager_.get_component<RenderComponent>(site);
+        //TASK: STORE
         if (render.entityType == EntityType::STORAGE) {
             //put all woodpacks into storage
             storage.current_storage += carriage.current_storage;
             carriage.current_storage = 0;
-            //transfer ownership
-            for (auto& resource : storage.stored_resources) {
-                component_manager_.get_component<ResourceComponent>(resource).holder = site;
+
+            //transfer ownership (entity by entity)
+            while(!carriage.stored_resources.empty()) {
+                auto woodpack = carriage.stored_resources.front();
+                component_manager_.get_component<ResourceComponent>(woodpack).holder = site;
+                storage.stored_resources.emplace_back(woodpack);
+                carriage.stored_resources.pop_front();
+
+                //update location of woodpack
+                auto& wood_loc = component_manager_.get_component<LocationComponent>(woodpack).loc;
+                wood_loc = site_pos;
             }
-            storage.stored_resources.clear();
+
+            std::cout << "current storage unit has " << storage.current_storage << " woodpacks" << std::endl;
+            finish_current_action(entity);
+
+            /*to delete
+            auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
+            task.finished = true;
+            //THIS IS IMPORTANT, or tasksystem doesn't know this task is finished
+            */
+
+            //TASK: ALLOCATE
         } else if (render.entityType == EntityType::WALL || render.entityType == EntityType::DOOR) {
             while(storage.current_storage < storage.storage_capacity && carriage.current_storage > 0) {
-                auto& cur_resource = carriage.stored_resources.front();
+                std::cout << "try allocate woodpack to blueprint" << std::endl;
+                auto& cur_resource = carriage.stored_resources.back();
                 //transfer ownership of current woodpack(entity)
                 component_manager_.get_component<ResourceComponent>(cur_resource).holder = site;
                 
                 //update storage
                 storage.current_storage += 5;
                 carriage.current_storage -= 5;
+                //transfer ownership of current woodpack(entity)
+                component_manager_.get_component<ResourceComponent>(cur_resource).holder = site;
                 storage.stored_resources.emplace_back(cur_resource);
-                carriage.stored_resources.pop_front();
-            }
-            //check if enough woodpacks to build
-            if (storage.current_storage >= storage.storage_capacity) {
-                std::cout << "enough woodpacks to build" << std::endl;
-                component_manager_.get_component<ConstructionComponent>(site).allocated = true;
+                carriage.stored_resources.pop_back();
+
+                //check if enough woodpacks to build
+                if (storage.current_storage >= storage.storage_capacity) {
+                    std::cout << "enough woodpacks to build" << std::endl;
+                    component_manager_.get_component<ConstructionComponent>(site).allocated = true;
+                    finish_current_action(entity);
+                    return;
+                    /*to delete
+                    auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
+                    task.finished = true;
+                    //THIS IS IMPORTANT, or tasksystem doesn't know this task is finished
+                    */
                 //if character carries resource, then he just carries
-                //until allocate/store task is assigned to him
-            //check if woodpacks in bag are used up
-            } else if (carriage.current_storage == 0) {
-                std::cout << "all woodpacks in bag are placed" << std::endl;
-                return;
+                    //until allocate/store task is assigned to him
+                    //check if woodpacks in bag are used up
+                } else if (carriage.current_storage == 0) {
+                    std::cout << "all woodpacks in bag are placed" << std::endl;
+                    finish_current_action(entity);
+
+                    /* to delete
+                    auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
+                    task.finished = true;
+                    //THIS IS IMPORTANT, or tasksystem doesn't know this task is finished
+                    */
+                    return;
+                }
             }
+            
         }
         //draw resource! based on current_storage displaying amount
     }
 
     //entity is character
     void build(Entity entity) {
+        std::cout << "entity " << entity << " build" << std::endl;
         auto& action = component_manager_.get_component<ActionComponent>(entity).current_action;
-        auto& blueprint = action.target_entity;
+        auto blueprint = action.target_entity;
+        std::cout << "build target: " << blueprint << std::endl;
         auto& track = component_manager_.get_component<TargetComponent>(blueprint);
-        track.progress += 100 / action.duration * framerate_;
+        track.progress += 100 / (action.duration * framerate_);
+        std::cout << "build progress:" << track.progress << std::endl;
         if (track.progress >= 100) {
+            //blueprint not target, won't be added to task queue
             track.is_finished = true;
-            finish_action(entity);
-            component_manager_.add_component(blueprint, CollisionComponent{true});
-            component_manager_.remove_component<TargetComponent>(blueprint);
-            component_manager_.remove_component<TaskComponent>(blueprint);
-            auto& construction = component_manager_.get_component<ConstructionComponent>(blueprint);
-            construction.is_built = true;
+
+            finish_current_action(entity);
+
+            auto entity_info = router_.printer(entity);
+            std::cout << "entity info:\ntype: " << entity_info.first << "\npos: " << entity_info.second.x << ", " << entity_info.second.y << std::endl;
+            auto info = router_.printer(blueprint);
+            std::cout << "blueprint info:\ntype: " << info.first << "\npos: " << info.second.x << ", " << info.second.y << std::endl;
+            /*
+            if (component_manager_.has_component<CollisionComponent>(blueprint)) {
+                component_manager_.get_component<CollisionComponent>(blueprint).collidable = true;
+            } else {
+                component_manager_.add_component(blueprint, CollisionComponent{true});
+            }
+
+            if (component_manager_.has_component<TaskComponent>(blueprint)) {
+                component_manager_.remove_component<TaskComponent>(blueprint);
+            }//not sure if this is necessary
+            */
+
+            if(component_manager_.has_component<ConstructionComponent>(blueprint)) {
+                auto& construction = component_manager_.get_component<ConstructionComponent>(blueprint);
+                construction.is_built = true;
+                std::cout << "blueprint " << blueprint << " is built" << std::endl;
+            } else {
+                std::cout << "WRONG blueprint doesn't have construction component" << std::endl;
+                component_manager_.add_component(blueprint, ConstructionComponent{.allocated = true, .is_built = true});
+            }
+
+            //remove woods on the site
+            auto& storage = component_manager_.get_component<StorageComponent>(blueprint);
+            while(!storage.stored_resources.empty()) {
+                //delete woodpack from site
+                auto& woodpack = storage.stored_resources.front();
+                storage.stored_resources.pop_front();
+
+                //delete this woodpack entity
+                if (component_manager_.has_component<TargetComponent>(woodpack)) {
+                    component_manager_.get_component<TargetComponent>(woodpack).to_be_deleted = true;
+                }
+            }
+            std::cout << "all woodpacks on site are deleted" << std::endl;
         }
     }
-
-    
-    
-  
 };  

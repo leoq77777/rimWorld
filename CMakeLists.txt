@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WIN32_EXECUTABLE FALSE)
 
-# SFML 配置
-set(SFML_DIR "${PROJECT_SOURCE_DIR}/SFML-2.6.2/lib/cmake/SFML")
+
+set(SFML_DIR "${PROJECT_SOURCE_DIR}/lib/SFML-2.6.2/lib/cmake/SFML")
 find_package(SFML 2.6.2 COMPONENTS graphics window system REQUIRED)
 
 # 源文件

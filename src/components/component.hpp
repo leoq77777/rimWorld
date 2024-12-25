@@ -6,11 +6,14 @@
 #include <vector>
 #include <functional>
 #include <deque>
+#include "../lib/nlohmann/json.hpp"
 #define MAX_COMPONENTS 32
  
 using ComponentType = std::uint8_t;
 using Entity = int;
 using Entities = std::vector<Entity>;
+
+using json = nlohmann::json;
 
 struct Location {
     int x;
@@ -22,7 +25,8 @@ struct Location {
     }
     bool operator!=(const Location& other) const {
         return x != other.x || y != other.y;
-    }   
+    }
+
 };
 
 namespace std {  
@@ -53,7 +57,7 @@ enum EntityType {
 enum TaskType {
     CHOP_WOOD, //near tree
     CONSTRUCT, //near construction
-    ALLOCATE, //near storage
+    ALLOCATE, //near construction
     IDLE, //entity itself
     COLLECT, //in unit of resource
     STORE, //near storage
@@ -84,26 +88,28 @@ struct Task {
     int priority;
     Action target_action;
     bool feasible;
+    bool finished;
     int id;
+    Entity actor;
+    void print_task_info() {
+        std::cout << "--------------------------------" << std::endl;
+        std::cout << "task id: " << id << ", type: " << static_cast<int>(type) << ", target locations: " << target_locations[0].x << ", " << target_locations[0].y << std::endl;
+        std::cout << "target action: " << static_cast<int>(target_action.type) << ", act on: " << target_action.target_entity << std::endl;
+        std::cout << "actor: " << actor << ", priority: " << priority << ", feasible: " << feasible << std::endl;
+        std::cout << "--------------------------------" << std::endl;
+    }
 };
 
 struct LocationComponent {
     Location loc;
 };
 
-struct FieldComponent {
-    Field field;
-};
-
-struct CollisionComponent {
-    bool collidable;
-};
-
 struct MovementComponent {
     Location start_pos;
     Location end_pos;
-    float progress; // 0.0 到 1.0
-    float speed;    // 每秒移动的格子数
+    float progress; 
+    float speed;    
+    bool move_finished;
 };
 
 struct ResourceComponent {
@@ -114,7 +120,7 @@ struct ResourceComponent {
 struct RenderComponent {
     EntityType entityType;
     bool is_selected;
-    RenderPos render_pos;
+    bool collidable;
 };
 
 struct ConstructionComponent {
@@ -148,8 +154,9 @@ struct TaskComponent {
 struct ActionComponent {  
     Action current_action;
     bool action_finished;
+    bool in_progress;
 };
-
+    
 //used to track task and progress
 struct TargetComponent {
     float progress;
@@ -160,6 +167,60 @@ struct TargetComponent {
     Entity hold_by;
 };
 
-struct followComponent {
-    Entity target;
-};
+void to_json(json& j, const EntityType& et) {
+    j = static_cast<int>(et);
+}
+
+void from_json(const json& j, EntityType& et) {
+    et = static_cast<EntityType>(j.get<int>());
+}
+
+void to_json(json& j, const TaskType& tt) {
+    j = static_cast<int>(tt);
+}
+
+void from_json(const json& j, TaskType& tt) {
+    tt = static_cast<TaskType>(j.get<int>());
+}
+
+void to_json(json& j, const ActionType& at) {
+    j = static_cast<int>(at);
+}
+
+void from_json(const json& j, ActionType& at) {
+    at = static_cast<ActionType>(j.get<int>());
+}
+
+void to_json(json& j, const Location& loc) {
+    j = json{{"x", loc.x}, {"y", loc.y}};
+}
+
+void from_json(const json& j, Location& loc) {
+    j.at("x").get_to(loc.x);
+    j.at("y").get_to(loc.y);
+}
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Action, type, target_location, duration, target_entity)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Task, type, target_locations, priority, target_action, 
+    feasible, finished, id, actor)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LocationComponent, loc)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(MovementComponent, start_pos, end_pos, progress, speed, move_finished)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ResourceComponent, amount, holder)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RenderComponent, entityType, is_selected, collidable)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConstructionComponent, allocated, is_built)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CreateComponent, to_be_created, amount, entity_type)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(StorageComponent, storage_capacity, current_storage, stored_resources)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TaskComponent, current_task, next_task)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionComponent, current_action, action_finished, in_progress)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TargetComponent, progress, timer, is_target, is_finished, to_be_deleted, hold_by)

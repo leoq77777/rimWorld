@@ -24,6 +24,7 @@ public:
         std::cout << "Entity " << id << " created" << std::endl;
         return id;
     }
+    
     void destroy_entity(Entity entity) {
         available_entities.push(entity);
         --living_entity_count;
@@ -48,10 +49,9 @@ public:
         return entity_used.test(entity);
     }
 
-    /*
-    void save_to_json(const std::string& filename = "entities.json") const {
+    void save() const {
+        std::string filename = "../saves/entities.json";
         nlohmann::json j;
-        // 序列化活跃的实体ID列表
         std::vector<Entity> active_entities;
         for (Entity i = 0; i < MAX_ENTITIES; ++i) {
             if (entity_used[i]) {
@@ -70,8 +70,8 @@ public:
         }
     }
 
-    // 从JSON文件加载实体管理器状态
-    void load_from_json(const std::string& filename = "entities.json") {
+    void load() {
+        std::string filename = "../saves/entities.json";
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cout << "No save file found, starting with empty state." << std::endl;
@@ -82,29 +82,28 @@ public:
         file >> j;
         file.close();
 
-        // 清除当前状态
-        while (!available_entities.empty()) available_entities.pop();
+        while (!available_entities.empty()) 
+            available_entities.pop();
         living_entity_count = 0;
         entity_used.reset();
 
-        // 反序列化活跃的实体ID列表
         if (j.contains("active_entities")) {
             for (const auto& id : j["active_entities"]) {
                 if (id.get<Entity>() < MAX_ENTITIES) {
-                    entity_used.set(id);
+                    auto cur_id = static_cast<Entity>(id.get<int>());
+                    entity_used.set(cur_id);
                     ++living_entity_count;
+                    max_entity_id = std::max(max_entity_id, cur_id);
                 }
             }
         }
 
-        // 重新填充可用实体队列
         for (Entity i = 0; i < MAX_ENTITIES; ++i) {
             if (!entity_used[i]) {
                 available_entities.push(i);
             }
         }
     }
-    */
 
 private:
 
