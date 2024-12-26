@@ -1,0 +1,26 @@
+{
+    "20": {
+        "hold_by": -1,
+        "is_finished": true,
+        "is_target": false,
+        "progress": 101.6666259765625,
+        "timer": 0.0,
+        "to_be_deleted": true
+    },
+    "27": {
+        "hold_by": 0,
+        "is_finished": true,
+        "is_target": false,
+        "progress": 0.0,
+        "timer": 0.0,
+        "to_be_deleted": false
+    },
+    "43": {
+        "hold_by": -1,
+        "is_finished": true,
+        "is_target": false,
+        "progress": 100.66657257080078,
+        "timer": 0.0,
+        "to_be_deleted": false
+    }
+}

@@ -1,0 +1,41 @@
+{
+    "13": {
+        "action_finished": false,
+        "current_action": {
+            "duration": 0.5,
+            "target_entity": 13,
+            "target_location": {
+                "x": 35,
+                "y": 21
+            },
+            "type": 2
+        },
+        "in_progress": true
+    },
+    "14": {
+        "action_finished": false,
+        "current_action": {
+            "duration": 0.5,
+            "target_entity": 14,
+            "target_location": {
+                "x": 29,
+                "y": 24
+            },
+            "type": 2
+        },
+        "in_progress": true
+    },
+    "15": {
+        "action_finished": false,
+        "current_action": {
+            "duration": 0.5,
+            "target_entity": 15,
+            "target_location": {
+                "x": 29,
+                "y": 41
+            },
+            "type": 2
+        },
+        "in_progress": true
+    }
+}

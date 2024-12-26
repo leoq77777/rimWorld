@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <memory>
 
-enum class GameState { StartMenu, InGame, EndMenu };
+enum class GameState { Start, In, End };
 
 class StartMenu {
     sf::RenderWindow& window_;
@@ -29,10 +29,10 @@ class StartMenu {
         button.setOutlineColor(sf::Color::Black);
         button.setOutlineThickness(2);
 
-        float width = 130;
-        float height = 45;
+        float width = 180;
+        float height = 50;
         box.setSize(sf::Vector2f(width, height));
-        box.setPosition(button.getPosition().x - 5, button.getPosition().y - 5);
+        box.setPosition(button.getPosition().x - 15, button.getPosition().y - 5);
         box.setFillColor(sf::Color(50, 50, 50, 64)); 
         box.setOutlineColor(sf::Color::Black);
         box.setOutlineThickness(2);
@@ -48,12 +48,26 @@ public:
             std::cerr << "Failed to load font!" << std::endl;
         }
 
-        setupButton(newGameButton, newGameButtonBox, "New Game", window_width_ / 2 - 50, window_height_ / 2 - 50);
-        setupButton(loadGameButton, loadGameButtonBox, "Load Game", window_width_ / 2 - 50, window_height_ / 2 + 50);
+        setupButton(newGameButton, newGameButtonBox, "New Game(N)", window_width_ / 2 - 60, window_height_ / 2 + 150);
+        setupButton(loadGameButton, loadGameButtonBox, "Load Game(L)", window_width_ / 2 - 60, window_height_ / 2 + 250);
     }
 
     void draw() {
         window_.clear(sf::Color::White);
+
+        sf::Texture bg_texture;
+        if (!bg_texture.loadFromFile("../resources/images/logo.jpg")) std::cerr << "Failed to load background texture" << std::endl;
+        sf::Sprite bgSprite(bg_texture);
+        sf::Vector2f scale(
+            static_cast<float>(window_.getSize().x) / static_cast<float>(bg_texture.getSize().x),
+            static_cast<float>(window_.getSize().y) / static_cast<float>(bg_texture.getSize().y)
+        );
+        bgSprite.setScale(scale);
+        sf::Color color = bgSprite.getColor();
+        color.a = 255; 
+        bgSprite.setColor(color); 
+        window_.draw(bgSprite);
+
         window_.draw(newGameButton);
         window_.draw(newGameButtonBox);
         window_.draw(loadGameButton);
@@ -195,10 +209,10 @@ class EndMenu {
         button.setOutlineColor(sf::Color::Black);
         button.setOutlineThickness(2);
 
-        float width = 170;
-        float height = 45;
+        float width = 220;
+        float height = 60;
         box.setSize(sf::Vector2f(width, height));
-        box.setPosition(button.getPosition().x - 5, button.getPosition().y - 5);
+        box.setPosition(button.getPosition().x - 15, button.getPosition().y - 15);
         box.setFillColor(sf::Color(50, 50, 50, 64)); 
         box.setOutlineColor(sf::Color::Black);
         box.setOutlineThickness(2);
@@ -211,25 +225,30 @@ public:
             std::cerr << "Failed to load font!" << std::endl;
         }
 
-        menuBackground.setSize(sf::Vector2f(window_width_, window_height_));
-        menuBackground.setFillColor(sf::Color(0, 0, 0, 128)); 
+        float panelWidth = window_width_ * 0.2f;
+        float panelHeight = window_height_ * 0.3f;
 
-        float panelWidth = window_width_ * 0.25f;
-        float panelHeight = window_height_ * 0.5f;
-        menuPanel.setSize(sf::Vector2f(panelWidth, panelHeight));
-        menuPanel.setPosition((window_width_ - panelWidth) / 2, (window_height_ - panelHeight) / 2);
-        menuPanel.setFillColor(sf::Color(50, 50, 50, 200)); 
-        menuPanel.setOutlineColor(sf::Color::Black);
-        menuPanel.setOutlineThickness(2);
-
-        float buttonPosX = (window_width_ - panelWidth) / 2 + (panelWidth - 150) / 2;
+        float buttonPosX = (window_width_ - panelWidth) / 2 + (panelWidth - 150) / 2 - 25;
         float buttonPosY = (window_height_ - panelHeight) / 2 + panelHeight / 2 - 25;
         setupButton(saveAndExitButton, saveAndExitButtonBox, "Save and Exit(S)", buttonPosX, buttonPosY);
     }
 
     void draw() {
         window_.draw(menuBackground); 
-        window_.draw(menuPanel);      
+
+        sf::Texture bg_texture;
+        if (!bg_texture.loadFromFile("../resources/images/logo.jpg")) std::cerr << "Failed to load background texture" << std::endl;
+        sf::Sprite bgSprite(bg_texture);
+        sf::Vector2f scale(
+            static_cast<float>(window_.getSize().x) / static_cast<float>(bg_texture.getSize().x),
+            static_cast<float>(window_.getSize().y) / static_cast<float>(bg_texture.getSize().y)
+        );
+        bgSprite.setScale(scale);
+        sf::Color color = bgSprite.getColor();
+        color.a = 100; 
+        bgSprite.setColor(color); 
+        window_.draw(bgSprite);
+
         window_.draw(saveAndExitButton);
         window_.draw(saveAndExitButtonBox);
     }
@@ -347,7 +366,7 @@ public:
         //view(sf::FloatRect(0, 0, window_width, window_height)),
         window_width_(window_width),
         window_height_(window_height),
-        game_state(GameState::InGame)
+        game_state(GameState::Start)
     {   
         std::cout << "initializing UI" << std::endl;
         /*
@@ -369,7 +388,7 @@ public:
         message.setOutlineColor(sf::Color::Black);
         message.setOutlineThickness(2);
         message.setPosition(window_width_ / 2.0f - 100, 50); 
-        message.setString("No new message");
+        message.setString("");
         std::cout << "UI initialized" << std::endl;
     }
 
@@ -385,18 +404,30 @@ public:
         sf::Clock clock;
         float deltaTime = 0.0f;
         int round = 0;
-        startNewGame();
+        //startNewGame();
         while (window.isOpen()) {
-
-
 
             handleEvents(clock);
 
-            if( !is_game_paused ) {
-                std::cout << "\n\n-----Round " << ++round << std::endl;
-                world_ -> update_world();
-                draw();
+            switch (game_state) {
+                case GameState::Start: {
+                    draw_start();
+                    break;
+                }
+                case GameState::In: {
+                    if( !is_game_paused ) {
+                        std::cout << "\n\n-----Round " << ++round << std::endl;
+                        world_ -> update_world();
+                        draw_in(true);
+                    }
+                    break;
+                }
+                case GameState::End: {
+                    draw_end();
+                    break;
+                }
             }
+            
 
             window.display();
 
@@ -404,205 +435,13 @@ public:
         }
     }
 
-    void draw() {
-        window.clear(sf::Color::White);
-
-        bool draw_background = false;
-        if (draw_background) {
-            sf::Texture bg_texture;
-            if (!bg_texture.loadFromFile("../resources/images/background.bmp")) {
-            std::cerr << "Failed to load background texture" << std::endl;
-        }
-            sf::Sprite bgSprite(bg_texture);
-            sf::Vector2f scale(
-                static_cast<float>(window.getSize().x) / static_cast<float>(bg_texture.getSize().x),
-                static_cast<float>(window.getSize().y) / static_cast<float>(bg_texture.getSize().y)
-            );
-            bgSprite.setScale(scale);
-            sf::Color color = bgSprite.getColor();
-            color.a = 120; 
-            bgSprite.setColor(color); 
-            window.draw(bgSprite);
-        }
-
-        drawGrid();
-        //drawWoodsDropped();
-        //here i dividely draw woods that are dropped and held by some entities
-        //and for efficiency, only draw one of them at a time
-        for(auto& entity : world_ -> get_all_entities()) {
-            new_draw_entity(entity);
-        }
-
-        if (is_selecting) {
-            mouseCurrentPos = sf::Mouse::getPosition(window);
-            float width = abs(mouseCurrentPos.x - mousePressedPos.x);
-            float height = abs(mouseCurrentPos.y - mousePressedPos.y);
-            float left = std::min(mousePressedPos.x, mouseCurrentPos.x);
-            float top = std::min(mousePressedPos.y, mouseCurrentPos.y);
-            
-            sf::RectangleShape selectionRect;
-            selectionRect.setPosition(left, top);
-            selectionRect.setSize(sf::Vector2f(width, height));
-            selectionRect.setOutlineColor(sf::Color::Green);
-            selectionRect.setOutlineThickness(2);
-            selectionRect.setFillColor(sf::Color(255, 255, 255, 128));
-            window.draw(selectionRect);
-        }
-        selectionMenu.draw();
-        buildMenu.draw();
-
-        if (messageVisible) {
-            updateMessage();
-            window.draw(message);
-        }
-    }
-
-    void new_draw_entity(Entity entity) {
-        if (!world_ -> component_manager_.has_component<RenderComponent>(entity)) {
-            return;
-        }
-        auto& render = world_ -> component_manager_.get_component<RenderComponent>(entity);
-        sf::Sprite sprite;
-
-        auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
-        float render_x = static_cast<float>(loc.x) * TILE_SIZE;
-        float render_y = static_cast<float>(loc.y) * TILE_SIZE;
-
-        if (world_ -> component_manager_.has_component<MovementComponent>(entity)) {
-            auto& movement = world_ -> component_manager_.get_component<MovementComponent>(entity);
-            float t = smoothstep(movement.progress);
-            std::cout << "progress: " << movement.progress << ", t: " << t << std::endl;
-            float bounce = sin(movement.progress * M_PI) * 4.0f;
-            render_x = lerp(movement.start_pos.x, movement.end_pos.x, t) * TILE_SIZE - bounce;
-            render_y = lerp(movement.start_pos.y, movement.end_pos.y, t) * TILE_SIZE;
-        } 
-
-        //draw_location(entity);
-        
-        switch (render.entityType) {
-            case EntityType::TREE: {
-                sf::Texture tree_texture;
-                if (!tree_texture.loadFromFile("../resources/images/tree.png")) {
-                    std::cerr << "Failed to load tree texture" << std::endl;
-                }
-                sprite.setTexture(tree_texture);
-                auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
-                sprite.setPosition(render_x - TILE_SIZE / 8, render_y - TILE_SIZE / 2);
-                sprite.setScale(0.25f, 0.25f);
-                window.draw(sprite);
-                drawMark(entity);
-                drawProcess(entity);
-                break;
-            }
-            case EntityType::CHARACTER: {
-                sf::Texture character_texture;
-                if (!character_texture.loadFromFile("../resources/images/character.png")) {
-                    std::cerr << "Failed to load character texture" << std::endl;
-                }
-                sprite.setTexture(character_texture);
-                sprite.setPosition(render_x, render_y);
-                sprite.setScale(0.5f, 0.5f);
-                window.draw(sprite);
-                //drawTask(entity);
-                drawWoodsHeld(entity);
-                break;
-            }
-            case EntityType::DOG: {
-                sf::Texture dog_texture;
-                if (!dog_texture.loadFromFile("../resources/images/cow.png")) {
-                    std::cerr << "Failed to load dog texture" << std::endl;
-                }
-                sprite.setTexture(dog_texture);
-                sprite.setPosition(render_x, render_y);
-                sprite.setScale(0.5f, 0.5f);
-                window.draw(sprite);
-                //drawTask(entity);
-                break;
-            }
-            case EntityType::DOOR: {
-                sf::Texture door_texture;
-                if (!door_texture.loadFromFile("../resources/images/door.png")) {
-                    std::cerr << "Failed to load door texture" << std::endl;
-                }
-                sprite.setTexture(door_texture);
-                sprite.setPosition(render_x, render_y);
-                sprite.setScale(0.2f, 0.2f);
-                auto& construction = world_ -> component_manager_.get_component<ConstructionComponent>(entity);
-                if (!construction.is_built) {
-                    sf::Color color = sprite.getColor();
-                    color.a = 128;
-                    sprite.setColor(color);
-                }
-                window.draw(sprite);
-                drawProcess(entity);
-                break;
-            }
-            case EntityType::WALL: {
-                sf::Texture wall_texture;
-                if (!wall_texture.loadFromFile("../resources/images/wall.png")) {
-                    std::cerr << "Failed to load wall texture" << std::endl;
-                }
-                sprite.setTexture(wall_texture);
-                sprite.setPosition(render_x, render_y);
-                sprite.setScale(0.6f, 0.6f);
-                auto& construction = world_ -> component_manager_.get_component<ConstructionComponent>(entity);
-                if (!construction.is_built) {
-                    sf::Color color = sprite.getColor();
-                    color.a = 128;
-                    sprite.setColor(color);
-                }
-                window.draw(sprite);
-                drawProcess(entity);
-                break;
-            }
-            case EntityType::STORAGE: {
-                sf::Texture storage_texture;
-                if (!storage_texture.loadFromFile("../resources/images/storage.png")) {
-                    std::cerr << "Failed to load storage texture" << std::endl;
-                }
-                sprite.setTexture(storage_texture);
-                sprite.setPosition(render_x - TILE_SIZE / 8, render_y);
-                sprite.setScale(0.25f, 0.25f);
-                sf::Color color = sprite.getColor();
-                color.a = 140;
-                sprite.setColor(color);
-                window.draw(sprite);
-                drawWoodsHeld(entity);
-                drawProcess(entity);
-                break;
-            }
-            /* aborted: draw wood pack
-            case EntityType::WOODPACK: {
-                
-                sf::Texture wood_texture;
-                if (!wood_texture.loadFromFile("../resources/images/wood.png")) {
-                    std::cerr << "Failed to load wodd texture" << std::endl;
-                }
-                sprite.setTexture(wood_texture);
-                sprite.setPosition(render_x, render_y);
-                sf::Vector2f wood_scale(
-                    static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().x),
-                    static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().y)
-                );
-                sprite.setScale(wood_scale);
-                window.draw(sprite);
-                sf::CircleShape wood(TILE_SIZE/2);
-                wood.setPosition(render_x, render_y);
-                wood.setFillColor(sf::Color(139, 69, 19, 120));
-                window.draw(wood);
-                break;
-            }
-            */
-            default:
-                break;
-        }
-    }
-
+    
 private:
-    void drawGame();
-    void drawStartMenu();
-    void drawEndMenu();
-
+    void set_up_button(sf::RectangleShape& btn, std::string text, sf::Vector2f pos, sf::Vector2f size);
+    void draw_start();
+    void draw_in(bool background);
+    void draw_end();
+    void draw_entity(Entity entity);
     void drawGrid();
     void drawEntity(Entity entity);
     void drawMark(Entity entity);
@@ -622,7 +461,7 @@ private:
     void startNewGame() {
         std::cout << "try start new game" << std::endl;
         world_ = std::make_unique<World>();
-        game_state = GameState::InGame;
+        game_state = GameState::In;
         std::cout << "try set view to game world view" << std::endl;
         //window.setView(gameWorldView);
     }
@@ -632,7 +471,7 @@ private:
             std::cout << "try load existing game" << std::endl;
             world_ = std::make_unique<World>();
             world_->load_world();
-            game_state = GameState::InGame;
+            game_state = GameState::In;
         } catch (const std::exception& e) {
             std::cerr << "Failed to load game: " << e.what() << std::endl;
         }
@@ -683,13 +522,13 @@ private:
             }
 
             switch (game_state) {
-            case GameState::StartMenu:
+            case GameState::Start:
                 handleStartMenuEvents(event);
                 break;
-            case GameState::InGame:
+            case GameState::In:
                 handleInGameEvents(event);
                 break;
-            case GameState::EndMenu:
+            case GameState::End:
                 handleEndMenuEvents(event);
                 break;
             }
@@ -697,7 +536,10 @@ private:
     }
 
     void handleStartMenuEvents(const sf::Event& event) {
-        if (event.type == sf::Event::MouseButtonPressed && game_state == GameState::StartMenu) {
+        if (game_state != GameState::Start)
+            return;
+
+        if (event.type == sf::Event::MouseButtonPressed) {
             auto mousePos = sf::Mouse::getPosition(window);
             if (startMenu.isButtonClicked(mousePos, "New Game(N)")) {
                 startNewGame();
@@ -714,6 +556,9 @@ private:
     }
 
     void handleInGameEvents(const sf::Event& event) {
+        if (game_state != GameState::In)
+            return;
+
         if (event.type == sf::Event::MouseButtonPressed) {
             handleMousePress(event);
         }
@@ -726,7 +571,10 @@ private:
     }
     
     void handleEndMenuEvents(const sf::Event& event) {
-        if (event.type == sf::Event::MouseButtonPressed && game_state == GameState::EndMenu) {
+        if (game_state != GameState::End)
+            return;
+
+        if (event.type == sf::Event::MouseButtonPressed) {
             auto mousePos = sf::Mouse::getPosition(window);
             if (endMenu.isButtonClicked(mousePos))
                 save_and_exit();
@@ -734,8 +582,10 @@ private:
         endMenu.updateHover(sf::Mouse::getPosition(window));
 
         if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) 
-                game_state = GameState::InGame;
+            if (event.key.code == sf::Keyboard::Escape) {
+                game_state = GameState::In;
+                is_game_paused = false;
+            }
             else if (event.key.code == sf::Keyboard::S)
                 save_and_exit();
         }
@@ -840,7 +690,8 @@ private:
     void handleKeyPress(sf::Keyboard::Key key) {
         switch (key) {
             case sf::Keyboard::Escape: {
-                game_state = GameState::EndMenu;
+                is_game_paused = true;
+                game_state = GameState::End;
                 break;
             }
             case sf::Keyboard::Space: {
@@ -959,7 +810,7 @@ private:
     void updateMessage() {
         if (messageVisible && messageTimer.getElapsedTime().asSeconds() >= 2.0f) {
             messageVisible = false;
-            message.setString("No message"); 
+            message.setString(""); 
         }
     }
     
@@ -1176,7 +1027,7 @@ void UI::drawWoodsDropped() {
         auto wood_text = "Dropped: " + std::to_string(amount);
         if (amount > 0) {
             drawOneWood(loc);
-            drawWoodtext(wood_text, loc);
+            //drawWoodtext(wood_text, loc);
         }
     }
 }
@@ -1252,6 +1103,8 @@ void UI::drawTask(Entity entity) {
     task_text.setPosition(pos.x * TILE_SIZE - 2 * TILE_SIZE, pos.y * TILE_SIZE - TILE_SIZE / 2);
     task_text.setString(info);
     task_text.setFillColor(sf::Color::Red);
+    task_text.setOutlineColor(sf::Color::White);
+    task_text.setOutlineThickness(1);
     window.draw(task_text);
 }
 
@@ -1278,8 +1131,8 @@ void UI::drawOneWood(Location loc) {
     sf::Sprite wood(wood_texture);
     wood.setPosition(loc.x * TILE_SIZE, loc.y * TILE_SIZE);
     sf::Vector2f wood_scale(
-        static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().x),
-        static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().y)
+        static_cast<float>(TILE_SIZE - 8 ) / static_cast<float>(wood_texture.getSize().x),
+        static_cast<float>(TILE_SIZE - 8 ) / static_cast<float>(wood_texture.getSize().y)
     );
     wood.setScale(wood_scale);
     window.draw(wood);
@@ -1379,31 +1232,60 @@ void UI::updateViewPosition(float deltaTime) {
     window.setView(view);
 }
 */
-//THIS is old version draw
-void UI::drawGame() {
-    window.clear(sf::Color(128, 128, 128));
 
-    world_ -> update_world();
-    updateMessage();
-    //updateViewPosition(deltaTime);
-    
-    drawGrid();
+void UI::set_up_button(sf::RectangleShape& btn, std::string text, sf::Vector2f pos, sf::Vector2f size) {
+    btn.setSize(size);
+    btn.setPosition(pos);
+    btn.setFillColor(sf::Color(50, 50, 50, 120));
+    btn.setOutlineColor(sf::Color::White);
+    btn.setOutlineThickness(2);
+}
 
-    for(auto& entity : world_ -> get_all_entities()) {
-        //this old version draw entity
-        drawEntity(entity);
+void UI::draw_start() {
+    startMenu.draw();
+}
+
+void UI::draw_end() {
+    endMenu.draw();
+}
+
+void UI::draw_in(bool background) {
+    window.clear(sf::Color::White);
+
+    if (background) {
+        sf::Texture bg_texture;
+        if (!bg_texture.loadFromFile("../resources/images/background.bmp")) {
+            std::cerr << "Failed to load background texture" << std::endl;
+        }
+        sf::Sprite bgSprite(bg_texture);
+        sf::Vector2f scale(
+            static_cast<float>(window.getSize().x) / static_cast<float>(bg_texture.getSize().x),
+            static_cast<float>(window.getSize().y) / static_cast<float>(bg_texture.getSize().y)
+        );
+        bgSprite.setScale(scale);
+        sf::Color color = bgSprite.getColor();
+        color.a = 120; 
+        bgSprite.setColor(color); 
+        window.draw(bgSprite);
     }
-        
-    //update_dropped_woods();
-    //drawWoodtext();
+
+    //drawGrid();
+        //drawWoodsDropped();
+        //here i dividely draw woods that are dropped and held by some entities
+        //and for efficiency, only draw one of them at a time
+    for(auto& entity : world_ -> get_all_entities()) {
+        draw_entity(entity);
+    }
+
+    drawWoodsDropped();
 
     if (is_selecting) {
         mouseCurrentPos = sf::Mouse::getPosition(window);
         float width = abs(mouseCurrentPos.x - mousePressedPos.x);
         float height = abs(mouseCurrentPos.y - mousePressedPos.y);
         float left = std::min(mousePressedPos.x, mouseCurrentPos.x);
-        float top = std::min(mousePressedPos.y, mouseCurrentPos.y);
-            
+        float top = std::min(mousePressedPos.y, mouseCurrentPos.y);     
+
         sf::RectangleShape selectionRect;
         selectionRect.setPosition(left, top);
         selectionRect.setSize(sf::Vector2f(width, height));
@@ -1412,12 +1294,145 @@ void UI::drawGame() {
         selectionRect.setFillColor(sf::Color(255, 255, 255, 128));
         window.draw(selectionRect);
     }
-          
+
     selectionMenu.draw();
     buildMenu.draw();
 
     if (messageVisible) {
+        updateMessage();
+        sf::RectangleShape bg;
+        bg.setSize(sf::Vector2f(message.getGlobalBounds().width + 20, message.getGlobalBounds().height + 10));
+        bg.setFillColor(sf::Color(0, 0, 0, 150));
+        bg.setPosition(message.getPosition().x - 10, message.getPosition().y - 5);
+        window.draw(bg);
         window.draw(message);
     }
 }
 
+void UI::draw_entity(Entity entity) {
+    if (!world_ -> component_manager_.has_component<RenderComponent>(entity)) {
+        return;        }
+    auto& render = world_ -> component_manager_.get_component<RenderComponent>(entity);
+    sf::Sprite sprite;
+
+    auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
+    float render_x = static_cast<float>(loc.x) * TILE_SIZE;
+    float render_y = static_cast<float>(loc.y) * TILE_SIZE;
+
+    if (world_ -> component_manager_.has_component<MovementComponent>(entity)) {
+        auto& movement = world_ -> component_manager_.get_component<MovementComponent>(entity);
+        float t = smoothstep(movement.progress);
+        std::cout << "progress: " << movement.progress << ", t: " << t << std::endl;
+        float bounce = sin(movement.progress * M_PI) * 4.0f;
+        render_x = lerp(movement.start_pos.x, movement.end_pos.x, t) * TILE_SIZE - bounce;
+        render_y = lerp(movement.start_pos.y, movement.end_pos.y, t) * TILE_SIZE;
+    } 
+
+        //draw_location(entity);
+        
+    switch (render.entityType) {
+        case EntityType::TREE: {
+            sf::Texture tree_texture;
+            if (!tree_texture.loadFromFile("../resources/images/tree.png")) std::cerr << "Failed to load tree texture" << std::endl;
+            sprite.setTexture(tree_texture);
+            auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
+            sprite.setPosition(render_x - TILE_SIZE / 8, render_y - TILE_SIZE / 2);
+            sprite.setScale(0.25f, 0.25f);
+            window.draw(sprite);
+            drawMark(entity);
+            drawProcess(entity);
+            break;
+        }
+        case EntityType::CHARACTER: {
+            sf::Texture character_texture;
+            if (!character_texture.loadFromFile("../resources/images/character.png")) std::cerr << "Failed to load character texture" << std::endl;
+            sprite.setTexture(character_texture);
+            sprite.setPosition(render_x, render_y);
+            sprite.setScale(0.5f, 0.5f);
+            window.draw(sprite);
+            drawTask(entity);
+            drawWoodsHeld(entity);
+            break;
+        }
+        case EntityType::DOG: {
+            sf::Texture dog_texture;
+            if (!dog_texture.loadFromFile("../resources/images/cow.png")) std::cerr << "Failed to load dog texture" << std::endl;
+            sprite.setTexture(dog_texture);
+            sprite.setPosition(render_x, render_y);
+            sprite.setScale(0.5f, 0.5f);
+            window.draw(sprite);
+            //drawTask(entity);
+            break;
+        }
+        case EntityType::DOOR: {
+            sf::Texture door_texture;
+            if (!door_texture.loadFromFile("../resources/images/door.png")) std::cerr << "Failed to load door texture" << std::endl;
+            sprite.setTexture(door_texture);
+            sprite.setPosition(render_x, render_y);
+            sprite.setScale(0.2f, 0.18f);
+            auto& construction = world_ -> component_manager_.get_component<ConstructionComponent>(entity);
+            if (!construction.is_built) {
+                sf::Color color = sprite.getColor();
+                color.a = 128;
+                sprite.setColor(color);
+            }
+            window.draw(sprite);
+            drawProcess(entity);
+            break;
+        }
+        case EntityType::WALL: {
+            sf::Texture wall_texture;
+            if (!wall_texture.loadFromFile("../resources/images/wall.png")) std::cerr << "Failed to load wall texture" << std::endl;     
+            sprite.setTexture(wall_texture);
+            sprite.setPosition(render_x, render_y);
+            sprite.setScale(0.6f, 0.6f);
+            auto& construction = world_ -> component_manager_.get_component<ConstructionComponent>(entity);
+            if (!construction.is_built) {
+                sf::Color color = sprite.getColor();
+                color.a = 128;
+                sprite.setColor(color);
+            }
+            window.draw(sprite);
+            drawProcess(entity);
+            break;
+        }
+        case EntityType::STORAGE: {
+            sf::Texture storage_texture;
+            if (!storage_texture.loadFromFile("../resources/images/storage.png")) std::cerr << "Failed to load storage texture" << std::endl;
+            sprite.setTexture(storage_texture);
+            sprite.setPosition(render_x - TILE_SIZE / 8, render_y);
+            sprite.setScale(0.25f, 0.25f);
+            sf::Color color = sprite.getColor();
+            color.a = 140;
+            sprite.setColor(color);
+            window.draw(sprite);
+            drawWoodsHeld(entity);
+            drawProcess(entity);
+            break;
+        }
+            /* aborted: draw wood pack
+            case EntityType::WOODPACK: {
+                
+                sf::Texture wood_texture;
+                if (!wood_texture.loadFromFile("../resources/images/wood.png")) {
+                    std::cerr << "Failed to load wodd texture" << std::endl;
+                }
+                sprite.setTexture(wood_texture);
+                sprite.setPosition(render_x, render_y);
+                sf::Vector2f wood_scale(
+                    static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().x),
+                    static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().y)
+                );
+                sprite.setScale(wood_scale);
+                window.draw(sprite);
+                sf::CircleShape wood(TILE_SIZE/2);
+                wood.setPosition(render_x, render_y);
+                wood.setFillColor(sf::Color(139, 69, 19, 120));
+                window.draw(wood);
+                break;
+            }
+            */
+        default:
+            break;
+    }
+}

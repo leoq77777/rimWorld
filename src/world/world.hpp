@@ -215,8 +215,8 @@ void World::generate_random_entity(int count, EntityType type) {
 
 void World::init_world() {
     std::cout << "initializing world" << std::endl;
-    generate_random_entity( 1, EntityType::CHARACTER );
-    //generate_random_entity( 1, EntityType::DOG );
+    generate_random_entity( 2, EntityType::CHARACTER );
+    generate_random_entity( 1, EntityType::DOG );
     generate_random_entity( 10, EntityType::TREE );
     create_system_.update();
 }

@@ -1,0 +1,77 @@
+{
+    "13": {
+        "current_task": {
+            "actor": -1,
+            "feasible": true,
+            "finished": false,
+            "id": -1,
+            "priority": 0,
+            "target_action": {
+                "duration": 0.0,
+                "target_entity": -1,
+                "target_location": {
+                    "x": -1,
+                    "y": -1
+                },
+                "type": 2
+            },
+            "target_locations": [
+                {
+                    "x": -1,
+                    "y": -1
+                }
+            ],
+            "type": 3
+        }
+    },
+    "14": {
+        "current_task": {
+            "actor": -1,
+            "feasible": true,
+            "finished": false,
+            "id": -1,
+            "priority": 0,
+            "target_action": {
+                "duration": 0.0,
+                "target_entity": -1,
+                "target_location": {
+                    "x": -1,
+                    "y": -1
+                },
+                "type": 2
+            },
+            "target_locations": [
+                {
+                    "x": -1,
+                    "y": -1
+                }
+            ],
+            "type": 3
+        }
+    },
+    "15": {
+        "current_task": {
+            "actor": -1,
+            "feasible": true,
+            "finished": false,
+            "id": -1,
+            "priority": 0,
+            "target_action": {
+                "duration": 0.0,
+                "target_entity": -1,
+                "target_location": {
+                    "x": -1,
+                    "y": -1
+                },
+                "type": 2
+            },
+            "target_locations": [
+                {
+                    "x": -1,
+                    "y": -1
+                }
+            ],
+            "type": 3
+        }
+    }
+}

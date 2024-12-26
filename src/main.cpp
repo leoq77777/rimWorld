@@ -4,7 +4,7 @@
 int main() {
     std::cout << "Game initializing..." << std::endl;
 
-    bool is_fullscreen = false;
+    bool is_fullscreen = true;
     sf::VideoMode desktopMode = sf::VideoMode::getDesktopMode();
     int custom_width = 1280, custom_height = 720;
     int resolution_width = is_fullscreen ? desktopMode.width : custom_width;

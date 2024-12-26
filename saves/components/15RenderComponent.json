@@ -1,0 +1,137 @@
+{
+    "13": {
+        "collidable": false,
+        "entityType": 0,
+        "is_selected": false
+    },
+    "14": {
+        "collidable": false,
+        "entityType": 0,
+        "is_selected": false
+    },
+    "15": {
+        "collidable": true,
+        "entityType": 5,
+        "is_selected": false
+    },
+    "16": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "17": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "18": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "19": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "20": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "21": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "22": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "23": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "24": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "25": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "27": {
+        "collidable": false,
+        "entityType": 6,
+        "is_selected": true
+    },
+    "29": {
+        "collidable": true,
+        "entityType": 1,
+        "is_selected": false
+    },
+    "31": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": false
+    },
+    "32": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "33": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "34": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "35": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "36": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "37": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "38": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "39": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "40": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "41": {
+        "collidable": false,
+        "entityType": 2,
+        "is_selected": true
+    },
+    "43": {
+        "collidable": true,
+        "entityType": 3,
+        "is_selected": true
+    }
+}

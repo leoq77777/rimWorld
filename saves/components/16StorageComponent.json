@@ -1,0 +1,33 @@
+{
+    "13": {
+        "current_storage": 0,
+        "storage_capacity": 1100,
+        "stored_resources": []
+    },
+    "14": {
+        "current_storage": 0,
+        "storage_capacity": 1100,
+        "stored_resources": []
+    },
+    "27": {
+        "current_storage": 50,
+        "storage_capacity": 1100,
+        "stored_resources": [
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            31
+        ]
+    },
+    "43": {
+        "current_storage": 5,
+        "storage_capacity": 5,
+        "stored_resources": []
+    }
+}
