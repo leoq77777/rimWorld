@@ -1,41 +1,41 @@
 {
     "13": {
         "end_pos": {
-            "x": 27,
-            "y": 19
+            "x": 13,
+            "y": 18
         },
         "move_finished": true,
-        "progress": 0.7833332419395447,
-        "speed": 0.5,
+        "progress": 0.46666666865348816,
+        "speed": 2.0,
         "start_pos": {
-            "x": 28,
-            "y": 19
+            "x": 13,
+            "y": 17
         }
     },
     "14": {
         "end_pos": {
-            "x": 28,
-            "y": 16
+            "x": 14,
+            "y": 20
         },
         "move_finished": true,
-        "progress": 0.9333333373069763,
+        "progress": 0.4000000059604645,
         "speed": 2.0,
         "start_pos": {
-            "x": 28,
-            "y": 15
+            "x": 15,
+            "y": 20
         }
     },
     "15": {
         "end_pos": {
-            "x": 42,
-            "y": 41
+            "x": 47,
+            "y": 14
         },
         "move_finished": true,
-        "progress": 0.30000001192092896,
+        "progress": 0.5000000596046448,
         "speed": 3.0,
         "start_pos": {
-            "x": 43,
-            "y": 41
+            "x": 48,
+            "y": 14
         }
     }
 }

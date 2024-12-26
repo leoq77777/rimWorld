@@ -20,25 +20,3 @@ int main() {
     return 0;
 }
 
-/*test texture
-    sf::RenderWindow window(sf::VideoMode(resolution_width, resolution_height), "My Game");
-    int x = resolution_width / 2;
-    int y = resolution_height / 2;
-    sf::Sprite sprite;
-    sf::Texture treeTexture;
-    if (!treeTexture.loadFromFile("../resources/images/tree.png")) {
-        std::cerr << "Failed to load tree texture" << std::endl;
-    }
-    sprite.setTexture(treeTexture);
-    while(window.isOpen()) {
-        sf::Event event;
-        while(window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window.close();
-            }
-        }
-        window.clear();
-        window.draw(sprite);
-        window.display();
-    }
-    */

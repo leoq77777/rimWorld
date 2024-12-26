@@ -1,5 +1,13 @@
 {
-    "19": {
+    "20": {
+        "hold_by": -1,
+        "is_finished": true,
+        "is_target": false,
+        "progress": 101.6666259765625,
+        "timer": 0.0,
+        "to_be_deleted": true
+    },
+    "23": {
         "hold_by": -1,
         "is_finished": true,
         "is_target": false,
@@ -9,19 +17,11 @@
     },
     "27": {
         "hold_by": 0,
-        "is_finished": false,
-        "is_target": true,
+        "is_finished": true,
+        "is_target": false,
         "progress": 0.0,
         "timer": 0.0,
         "to_be_deleted": false
-    },
-    "41": {
-        "hold_by": -1,
-        "is_finished": true,
-        "is_target": false,
-        "progress": 101.6666259765625,
-        "timer": 0.0,
-        "to_be_deleted": true
     },
     "43": {
         "hold_by": -1,
@@ -43,56 +43,24 @@
         "hold_by": -1,
         "is_finished": true,
         "is_target": false,
-        "progress": 101.6666259765625,
-        "timer": 0.0,
-        "to_be_deleted": true
-    },
-    "51": {
-        "hold_by": -1,
-        "is_finished": true,
-        "is_target": false,
         "progress": 100.66657257080078,
         "timer": 0.0,
         "to_be_deleted": false
     },
-    "55": {
+    "53": {
         "hold_by": -1,
         "is_finished": true,
         "is_target": false,
         "progress": 100.66657257080078,
-        "timer": 53.0,
+        "timer": 0.0,
         "to_be_deleted": false
     },
-    "57": {
+    "67": {
         "hold_by": -1,
         "is_finished": true,
         "is_target": false,
         "progress": 100.66657257080078,
-        "timer": 63.0,
-        "to_be_deleted": false
-    },
-    "59": {
-        "hold_by": -1,
-        "is_finished": false,
-        "is_target": true,
-        "progress": 0.0,
-        "timer": 14.0,
-        "to_be_deleted": false
-    },
-    "61": {
-        "hold_by": -1,
-        "is_finished": true,
-        "is_target": false,
-        "progress": 100.66657257080078,
-        "timer": 75.0,
-        "to_be_deleted": false
-    },
-    "63": {
-        "hold_by": -1,
-        "is_finished": true,
-        "is_target": false,
-        "progress": 100.66657257080078,
-        "timer": 80.0,
+        "timer": 0.0,
         "to_be_deleted": false
     }
 }

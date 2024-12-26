@@ -10,51 +10,47 @@
         "stored_resources": []
     },
     "27": {
-        "current_storage": 0,
+        "current_storage": 65,
         "storage_capacity": 1100,
-        "stored_resources": []
+        "stored_resources": [
+            39,
+            29,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            55
+        ]
     },
     "43": {
-        "current_storage": 25,
-        "storage_capacity": 25,
-        "stored_resources": []
-    },
-    "47": {
-        "current_storage": 25,
-        "storage_capacity": 25,
-        "stored_resources": []
-    },
-    "51": {
         "current_storage": 5,
         "storage_capacity": 5,
         "stored_resources": []
     },
-    "55": {
+    "47": {
+        "current_storage": 5,
+        "storage_capacity": 5,
+        "stored_resources": []
+    },
+    "49": {
+        "current_storage": 5,
+        "storage_capacity": 5,
+        "stored_resources": []
+    },
+    "53": {
         "current_storage": 25,
         "storage_capacity": 25,
         "stored_resources": []
     },
-    "57": {
-        "current_storage": 25,
-        "storage_capacity": 25,
-        "stored_resources": []
-    },
-    "59": {
-        "current_storage": 10,
-        "storage_capacity": 25,
-        "stored_resources": [
-            67,
-            79
-        ]
-    },
-    "61": {
-        "current_storage": 25,
-        "storage_capacity": 25,
-        "stored_resources": []
-    },
-    "63": {
-        "current_storage": 25,
-        "storage_capacity": 25,
+    "67": {
+        "current_storage": 5,
+        "storage_capacity": 5,
         "stored_resources": []
     }
 }

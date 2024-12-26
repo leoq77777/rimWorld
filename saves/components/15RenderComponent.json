@@ -127,11 +127,11 @@
     "41": {
         "collidable": true,
         "entityType": 1,
-        "is_selected": true
+        "is_selected": false
     },
     "43": {
-        "collidable": false,
-        "entityType": 4,
+        "collidable": true,
+        "entityType": 3,
         "is_selected": false
     },
     "45": {
@@ -140,171 +140,86 @@
         "is_selected": false
     },
     "47": {
-        "collidable": false,
-        "entityType": 4,
-        "is_selected": false
-    },
-    "49": {
-        "collidable": true,
-        "entityType": 1,
-        "is_selected": true
-    },
-    "51": {
         "collidable": true,
         "entityType": 3,
         "is_selected": false
     },
-    "53": {
+    "49": {
+        "collidable": true,
+        "entityType": 3,
+        "is_selected": false
+    },
+    "51": {
         "collidable": true,
         "entityType": 1,
+        "is_selected": false
+    },
+    "53": {
+        "collidable": false,
+        "entityType": 4,
         "is_selected": false
     },
     "55": {
         "collidable": false,
-        "entityType": 4,
+        "entityType": 2,
+        "is_selected": false
+    },
+    "56": {
+        "collidable": false,
+        "entityType": 2,
         "is_selected": false
     },
     "57": {
         "collidable": false,
-        "entityType": 4,
+        "entityType": 2,
+        "is_selected": false
+    },
+    "58": {
+        "collidable": false,
+        "entityType": 2,
         "is_selected": false
     },
     "59": {
         "collidable": false,
-        "entityType": 4,
+        "entityType": 2,
+        "is_selected": false
+    },
+    "60": {
+        "collidable": false,
+        "entityType": 2,
         "is_selected": false
     },
     "61": {
         "collidable": false,
-        "entityType": 4,
+        "entityType": 2,
+        "is_selected": false
+    },
+    "62": {
+        "collidable": false,
+        "entityType": 2,
         "is_selected": false
     },
     "63": {
         "collidable": false,
-        "entityType": 4,
+        "entityType": 2,
+        "is_selected": false
+    },
+    "64": {
+        "collidable": false,
+        "entityType": 2,
         "is_selected": false
     },
     "65": {
-        "collidable": true,
-        "entityType": 1,
+        "collidable": false,
+        "entityType": 2,
         "is_selected": false
     },
     "67": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "68": {
-        "collidable": false,
-        "entityType": 2,
+        "collidable": true,
+        "entityType": 3,
         "is_selected": false
     },
     "69": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "70": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "71": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "72": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "73": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "74": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "75": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "76": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "77": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "79": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "80": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "81": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "82": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "83": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "84": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "85": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "86": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "87": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "88": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "89": {
-        "collidable": false,
-        "entityType": 2,
-        "is_selected": false
-    },
-    "91": {
-        "collidable": true,
-        "entityType": 1,
-        "is_selected": false
-    },
-    "93": {
         "collidable": true,
         "entityType": 1,
         "is_selected": false

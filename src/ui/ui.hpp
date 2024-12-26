@@ -15,7 +15,7 @@ public:
         : font_(font), window_width_(window_width), window_(window), messageVisible_(false) {
         message_.setFont(font_);
         message_.setCharacterSize(32);
-        message_.setFillColor(sf::Color(255, 0, 0, 128)); 
+        message_.setFillColor(sf::Color::White); 
         message_.setOutlineColor(sf::Color::Black);
         message_.setOutlineThickness(2);
         message_.setString("");
@@ -25,9 +25,8 @@ public:
         if (messageVisible_) {
             sf::RectangleShape bg;
             bg.setSize(sf::Vector2f(message_.getGlobalBounds().width + 20, message_.getGlobalBounds().height + 10));
-            bg.setFillColor(sf::Color(0, 0, 0, 150)); 
-            bg.setPosition(message_.getPosition().x - 10, message_.getPosition().y - 5); 
-
+            bg.setFillColor(sf::Color(0, 0, 0, 40)); 
+            bg.setPosition(message_.getPosition().x - 10, message_.getPosition().y); 
             window_.draw(bg);
             window_.draw(message_);
 
@@ -465,6 +464,7 @@ public:
         window_height_(is_fullscreen ? sf::VideoMode::getDesktopMode().height : window_height),
         game_state(GameState::Start)
     {   
+        if (!font.loadFromFile("C:/Windows/Fonts/Arial.ttf"))std::cerr << "Failed to load font!" << std::endl;
         gameView.setSize(window_width_, window_height_);
         float initial_x = window_width_ / 2.0f;
         float initial_y = window_height_ / 2.0f;
@@ -483,9 +483,7 @@ public:
         sf::Clock clock;
         float deltaTime = 0.0f;
         int round = 0;
-        //startNewGame();
         while (window.isOpen()) {
-
             handleEvents(clock);
 
             switch (game_state) {
@@ -987,7 +985,7 @@ void UI::drawWoodsHeld(Entity entity) {
 
     auto loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
     drawOneWood(loc);
-    //drawWoodtext(info, loc);
+    drawWoodtext(info, loc);
 }
 
 void UI::drawWoodsDropped() {
@@ -995,10 +993,10 @@ void UI::drawWoodsDropped() {
     for(auto& pair : wood_count) {
         Location loc = pair.first;
         int amount = pair.second;
-        auto wood_text = "Dropped: " + std::to_string(amount);
+        auto wood_text = "Dropped: " + std::to_string(amount * 5);
         if (amount > 0) {
             drawOneWood(loc);
-            //drawWoodtext(wood_text, loc);
+            drawWoodtext(wood_text, loc);
         }
     }
 }
@@ -1070,12 +1068,10 @@ void UI::drawTask(Entity entity) {
     std::string info = "" + task_str;
     sf::Text task_text;
     task_text.setFont(font);
-    task_text.setCharacterSize(32);
-    task_text.setPosition(pos.x * TILE_SIZE - 2 * TILE_SIZE, pos.y * TILE_SIZE - TILE_SIZE / 2);
+    task_text.setCharacterSize(12);
+    task_text.setPosition(pos.x * TILE_SIZE - 3 * TILE_SIZE / 2, pos.y * TILE_SIZE - TILE_SIZE / 2);
     task_text.setString(info);
-    task_text.setFillColor(sf::Color::Red);
-    task_text.setOutlineColor(sf::Color::White);
-    task_text.setOutlineThickness(1);
+    task_text.setFillColor(sf::Color::White);
     window.draw(task_text);
 }
 
@@ -1083,16 +1079,9 @@ void UI::drawWoodtext(std::string wood_text, Location loc) {
     sf::Text info;
     info.setFont(font);
     info.setCharacterSize(TILE_SIZE / 2);
-
-    sf::RectangleShape bg(sf::Vector2f(info.getGlobalBounds().width + 10, info.getGlobalBounds().height + 5));
-    bg.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 2, loc.y * TILE_SIZE + 3 * TILE_SIZE / 4 - 5);
-    bg.setFillColor(sf::Color(0, 0, 0, 150));
-
     info.setString(wood_text);
     info.setFillColor(sf::Color(139, 69, 19));
     info.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 2, loc.y * TILE_SIZE + 3 * TILE_SIZE / 4);
-
-    window.draw(bg);
     window.draw(info);
 }
 
@@ -1337,12 +1326,13 @@ void UI::draw_entity(Entity entity) {
             sf::Texture door_texture;
             if (!door_texture.loadFromFile("../resources/images/door.png")) std::cerr << "Failed to load door texture" << std::endl;
             sprite.setTexture(door_texture);
-            sprite.setPosition(render_x, render_y);
-            sprite.setScale(0.2f, 0.18f);
+            sprite.setPosition(render_x + 4, render_y - 8);
+            sprite.setScale(0.2f, 0.2f);
             auto& construction = world_ -> component_manager_.get_component<ConstructionComponent>(entity);
             if (!construction.is_built) {
+                drawWoodsHeld(entity);
                 sf::Color color = sprite.getColor();
-                color.a = 128;
+                color.a = 64;
                 sprite.setColor(color);
             }
             window.draw(sprite);
@@ -1357,8 +1347,9 @@ void UI::draw_entity(Entity entity) {
             sprite.setScale(0.6f, 0.6f);
             auto& construction = world_ -> component_manager_.get_component<ConstructionComponent>(entity);
             if (!construction.is_built) {
+                drawWoodsHeld(entity);
                 sf::Color color = sprite.getColor();
-                color.a = 128;
+                color.a = 64;
                 sprite.setColor(color);
             }
             window.draw(sprite);
