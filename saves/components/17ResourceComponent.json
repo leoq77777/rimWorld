@@ -40,12 +40,16 @@
         "holder": 0
     },
     "29": {
-        "amount": 1,
-        "holder": 0
+        "amount": 5,
+        "holder": 51
+    },
+    "30": {
+        "amount": 5,
+        "holder": 43
     },
     "31": {
         "amount": 5,
-        "holder": 27
+        "holder": 43
     },
     "32": {
         "amount": 5,
@@ -53,38 +57,146 @@
     },
     "33": {
         "amount": 5,
-        "holder": 27
+        "holder": 47
     },
     "34": {
         "amount": 5,
-        "holder": 27
+        "holder": 43
     },
     "35": {
         "amount": 5,
-        "holder": 27
+        "holder": 47
     },
     "36": {
         "amount": 5,
-        "holder": 27
+        "holder": 47
     },
     "37": {
         "amount": 5,
-        "holder": 27
+        "holder": 43
     },
     "38": {
         "amount": 5,
-        "holder": 27
+        "holder": 47
     },
     "39": {
         "amount": 5,
-        "holder": 27
-    },
-    "40": {
-        "amount": 5,
-        "holder": 27
+        "holder": 47
     },
     "41": {
+        "amount": 1,
+        "holder": 0
+    },
+    "45": {
+        "amount": 1,
+        "holder": 0
+    },
+    "49": {
+        "amount": 1,
+        "holder": 0
+    },
+    "53": {
+        "amount": 1,
+        "holder": 0
+    },
+    "65": {
+        "amount": 1,
+        "holder": 0
+    },
+    "67": {
         "amount": 5,
-        "holder": 27
+        "holder": 59
+    },
+    "68": {
+        "amount": 5,
+        "holder": 55
+    },
+    "69": {
+        "amount": 5,
+        "holder": 55
+    },
+    "70": {
+        "amount": 5,
+        "holder": 55
+    },
+    "71": {
+        "amount": 5,
+        "holder": 55
+    },
+    "72": {
+        "amount": 5,
+        "holder": 55
+    },
+    "73": {
+        "amount": 5,
+        "holder": 57
+    },
+    "74": {
+        "amount": 5,
+        "holder": 57
+    },
+    "75": {
+        "amount": 5,
+        "holder": 57
+    },
+    "76": {
+        "amount": 5,
+        "holder": 57
+    },
+    "77": {
+        "amount": 5,
+        "holder": 57
+    },
+    "79": {
+        "amount": 5,
+        "holder": 59
+    },
+    "80": {
+        "amount": 5,
+        "holder": 61
+    },
+    "81": {
+        "amount": 5,
+        "holder": 61
+    },
+    "82": {
+        "amount": 5,
+        "holder": 61
+    },
+    "83": {
+        "amount": 5,
+        "holder": 61
+    },
+    "84": {
+        "amount": 5,
+        "holder": 61
+    },
+    "85": {
+        "amount": 5,
+        "holder": 63
+    },
+    "86": {
+        "amount": 5,
+        "holder": 63
+    },
+    "87": {
+        "amount": 5,
+        "holder": 63
+    },
+    "88": {
+        "amount": 5,
+        "holder": 63
+    },
+    "89": {
+        "amount": 5,
+        "holder": 63
+    },
+    "91": {
+        "amount": 1,
+        "holder": 0
+    },
+    "93": {
+        "amount": 1,
+        "holder": 0
     }
 }

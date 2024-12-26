@@ -10,24 +10,51 @@
         "stored_resources": []
     },
     "27": {
-        "current_storage": 50,
+        "current_storage": 0,
         "storage_capacity": 1100,
-        "stored_resources": [
-            33,
-            34,
-            35,
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            31
-        ]
+        "stored_resources": []
     },
     "43": {
+        "current_storage": 25,
+        "storage_capacity": 25,
+        "stored_resources": []
+    },
+    "47": {
+        "current_storage": 25,
+        "storage_capacity": 25,
+        "stored_resources": []
+    },
+    "51": {
         "current_storage": 5,
         "storage_capacity": 5,
+        "stored_resources": []
+    },
+    "55": {
+        "current_storage": 25,
+        "storage_capacity": 25,
+        "stored_resources": []
+    },
+    "57": {
+        "current_storage": 25,
+        "storage_capacity": 25,
+        "stored_resources": []
+    },
+    "59": {
+        "current_storage": 10,
+        "storage_capacity": 25,
+        "stored_resources": [
+            67,
+            79
+        ]
+    },
+    "61": {
+        "current_storage": 25,
+        "storage_capacity": 25,
+        "stored_resources": []
+    },
+    "63": {
+        "current_storage": 25,
+        "storage_capacity": 25,
         "stored_resources": []
     }
 }

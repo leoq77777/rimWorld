@@ -361,7 +361,6 @@ CMakeFiles/game.dir/src/main.cpp.obj: \
  D:/desktop/gamedev/proj/src/system/actionsystem.hpp \
  D:/desktop/gamedev/proj/src/system/taskSystem.hpp \
  D:/desktop/gamedev/proj/src/system/createsystem.hpp \
- D:/desktop/gamedev/proj/src/utils/controller.hpp \
  D:/Software/CLion\ 2024.2.2/bin/mingw/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/thread \
  D:/Software/CLion\ 2024.2.2/bin/mingw/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/std_thread.h \
  D:/Software/CLion\ 2024.2.2/bin/mingw/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/this_thread_sleep.h \

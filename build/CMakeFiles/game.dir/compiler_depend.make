@@ -364,7 +364,6 @@ CMakeFiles/game.dir/src/main.cpp.obj: D:/desktop/gamedev/proj/src/main.cpp \
   D:/desktop/gamedev/proj/src/system/actionsystem.hpp \
   D:/desktop/gamedev/proj/src/system/createsystem.hpp \
   D:/desktop/gamedev/proj/src/system/taskSystem.hpp \
-  D:/desktop/gamedev/proj/src/utils/controller.hpp \
   D:/desktop/gamedev/proj/src/utils/path.hpp \
   D:/desktop/gamedev/proj/src/world/world.hpp \
   D:/desktop/gamedev/proj/src/ui/ui.hpp
@@ -823,8 +822,6 @@ D:/Software/CLion\ 2024.2.2/bin/mingw/lib/gcc/x86_64-w64-mingw32/13.1.0/include/
 D:/Software/CLion\ 2024.2.2/bin/mingw/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ostream:
 
 D:/Software/CLion\ 2024.2.2/bin/mingw/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/pstl/glue_algorithm_defs.h:
-
-D:/desktop/gamedev/proj/src/utils/controller.hpp:
 
 D:/Software/CLion\ 2024.2.2/bin/mingw/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/pstl/glue_memory_defs.h:
 

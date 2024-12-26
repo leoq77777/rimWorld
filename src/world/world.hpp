@@ -7,7 +7,6 @@
 #include "../system/actionsystem.hpp"
 #include "../system/taskSystem.hpp"
 #include "../system/createsystem.hpp"
-#include "../utils/controller.hpp"
 
 #define MAP_SIZE 50
 #define MAX_DIST MAP_SIZE*MAP_SIZE
@@ -28,15 +27,11 @@ public:
 
     //helper
     Router router_;
-    Controller controller_;
-
-    
 
     World() :
           entity_manager_(),
           component_manager_(),
           router_(component_manager_, entity_manager_, MAP_SIZE),
-          controller_(entity_manager_, component_manager_),
           create_system_(component_manager_, entity_manager_, router_, TILE_SIZE),
           action_system_(component_manager_, entity_manager_, router_, MAP_SIZE, FRAMERATE),
           task_system_(component_manager_, entity_manager_, router_),

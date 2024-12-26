@@ -9,6 +9,53 @@
 #include <memory>
 
 enum class GameState { Start, In, End };
+class Message {
+public:
+    Message(sf::Font& font, float window_width, sf::RenderWindow& window)
+        : font_(font), window_width_(window_width), window_(window), messageVisible_(false) {
+        message_.setFont(font_);
+        message_.setCharacterSize(32);
+        message_.setFillColor(sf::Color(255, 0, 0, 128)); 
+        message_.setOutlineColor(sf::Color::Black);
+        message_.setOutlineThickness(2);
+        message_.setString("");
+    }
+
+    void draw() {
+        if (messageVisible_) {
+            sf::RectangleShape bg;
+            bg.setSize(sf::Vector2f(message_.getGlobalBounds().width + 20, message_.getGlobalBounds().height + 10));
+            bg.setFillColor(sf::Color(0, 0, 0, 150)); 
+            bg.setPosition(message_.getPosition().x - 10, message_.getPosition().y - 5); 
+
+            window_.draw(bg);
+            window_.draw(message_);
+
+            if (messageTimer_.getElapsedTime().asSeconds() > 3.0f) 
+                hideMessage();
+        }
+    }
+
+    void showMessage(const std::string& text) {
+        message_.setString(text);
+        float x = window_width_ / 2.0f - message_.getGlobalBounds().width / 2.0f;
+        message_.setPosition(x, 50);
+        messageVisible_ = true;
+        messageTimer_.restart();
+    }
+
+    void hideMessage() {
+        messageVisible_ = false;
+    }
+
+private:
+    sf::Font& font_;
+    sf::Text message_;
+    bool messageVisible_;
+    sf::Clock messageTimer_;
+    float window_width_; 
+    sf::RenderWindow& window_;
+};
 
 class StartMenu {
     sf::RenderWindow& window_;
@@ -23,14 +70,16 @@ class StartMenu {
     void setupButton(sf::Text& button, sf::RectangleShape& box, const std::string& text, float posX, float posY) {
         button.setFont(font);
         button.setString(text);
-        button.setCharacterSize(24);
+        button.setCharacterSize(32);
         button.setPosition(posX, posY);
         button.setFillColor(sf::Color::White);
         button.setOutlineColor(sf::Color::Black);
         button.setOutlineThickness(2);
 
-        float width = 180;
-        float height = 50;
+        sf::FloatRect textBounds = button.getGlobalBounds();
+
+        float width = textBounds.width + 30; 
+        float height = textBounds.height + 10;
         box.setSize(sf::Vector2f(width, height));
         box.setPosition(button.getPosition().x - 15, button.getPosition().y - 5);
         box.setFillColor(sf::Color(50, 50, 50, 64)); 
@@ -48,8 +97,8 @@ public:
             std::cerr << "Failed to load font!" << std::endl;
         }
 
-        setupButton(newGameButton, newGameButtonBox, "New Game(N)", window_width_ / 2 - 60, window_height_ / 2 + 150);
-        setupButton(loadGameButton, loadGameButtonBox, "Load Game(L)", window_width_ / 2 - 60, window_height_ / 2 + 250);
+        setupButton(newGameButton, newGameButtonBox, "New Game(N)", window_width_ / 2 - 60, 3 * window_height_ / 4);
+        setupButton(loadGameButton, loadGameButtonBox, "Load Game(L)", window_width_ / 2 - 60, 3 * window_height_ / 4 + 100);
     }
 
     void draw() {
@@ -203,16 +252,18 @@ class EndMenu {
     void setupButton(sf::Text& button, sf::RectangleShape& box, const std::string& text, float posX, float posY) {
         button.setFont(font);
         button.setString(text);
-        button.setCharacterSize(24);
+        button.setCharacterSize(32);
         button.setPosition(posX, posY);
         button.setFillColor(sf::Color::White);
         button.setOutlineColor(sf::Color::Black);
         button.setOutlineThickness(2);
 
-        float width = 220;
-        float height = 60;
+        sf::FloatRect textBounds = button.getGlobalBounds();
+        float width = textBounds.width + 30; 
+        float height = textBounds.height + 10;
+
         box.setSize(sf::Vector2f(width, height));
-        box.setPosition(button.getPosition().x - 15, button.getPosition().y - 15);
+        box.setPosition(button.getPosition().x - 15, button.getPosition().y - 3);
         box.setFillColor(sf::Color(50, 50, 50, 64)); 
         box.setOutlineColor(sf::Color::Black);
         box.setOutlineThickness(2);
@@ -356,48 +407,76 @@ private:
 };
 
 class UI {
+    //settings
+    std::unique_ptr<World> world_;
+    int window_width_;
+    int window_height_;
+    sf::RenderWindow window;
+    int frame_rate_;
+    sf::Font font;
+
+    //some menu thing
+    GameState game_state;
+    StartMenu startMenu;
+    EndMenu endMenu;
+    SelectionMenu selectionMenu;
+    BuildMenu buildMenu;
+    Message msg;
+    
+    //helper
+    sf::Vector2i mousePressedPos;
+    sf::Vector2i mouseCurrentPos;
+    sf::Vector2i rightClickPos;
+    std::unordered_map<Location, int> wood_count;
+    bool is_selecting = false;
+    bool is_game_paused = false;
+    
+    //camara thing
+    sf::View gameView;
+    float viewMoveSpeed = 200.0f;
+    static constexpr int MAP_WIDTH = MAP_SIZE;
+    static constexpr int MAP_HEIGHT = MAP_SIZE;
+    static constexpr float MIN_VIEW_X = 0.0f;
+    static constexpr float MIN_VIEW_Y = 0.0f;
+    static constexpr float MAX_VIEW_X = MAP_WIDTH * TILE_SIZE;
+    static constexpr float MAX_VIEW_Y = MAP_HEIGHT * TILE_SIZE;
+    static constexpr float ZOOM_SPEED = 0.1f;
+    static constexpr float MIN_ZOOM = 0.5f;
+    static constexpr float MAX_ZOOM = 2.0f;
+    float currentZoom = 1.0f;
+
 public:
-    UI(int window_width, int window_height) : 
-        window(sf::VideoMode(window_width, window_height), "My Game"),
-        startMenu(window, window_width, window_height),
-        endMenu(window, window_width, window_height),
+     UI(int window_width, int window_height, bool is_fullscreen = false) : 
+        window(is_fullscreen ? sf::VideoMode::getDesktopMode() : 
+                               sf::VideoMode(window_width, window_height),
+               "RinWorld",
+               is_fullscreen ? (sf::Style::Fullscreen | sf::Style::Close) : 
+                               (sf::Style::Default)),
+        startMenu(window, 
+                 is_fullscreen ? sf::VideoMode::getDesktopMode().width : window_width,
+                 is_fullscreen ? sf::VideoMode::getDesktopMode().height : window_height),
+        endMenu(window,
+                is_fullscreen ? sf::VideoMode::getDesktopMode().width : window_width,
+                is_fullscreen ? sf::VideoMode::getDesktopMode().height : window_height),
         selectionMenu(window), 
-        buildMenu(window),       
-        //view(sf::FloatRect(0, 0, window_width, window_height)),
-        window_width_(window_width),
-        window_height_(window_height),
+        buildMenu(window), 
+        msg(font, is_fullscreen ? sf::VideoMode::getDesktopMode().width : window_width, window),      
+        window_width_(is_fullscreen ? sf::VideoMode::getDesktopMode().width : window_width),
+        window_height_(is_fullscreen ? sf::VideoMode::getDesktopMode().height : window_height),
         game_state(GameState::Start)
     {   
+        gameView.setSize(window_width_, window_height_);
+        float initial_x = window_width_ / 2.0f;
+        float initial_y = window_height_ / 2.0f;
+        gameView.setCenter(initial_x, initial_y);
+        window.setView(gameView);
         std::cout << "initializing UI" << std::endl;
-        /*
-        startMenuView.reset(sf::FloatRect(0.f, 0.f, static_cast<float>(window_width), static_cast<float>(window_height)));
-        startMenuView.setViewport(sf::FloatRect(0.f, 0.f, 1.f, 1.f));
-
-        // 设置游戏世界视图
-        gameWorldView.reset(sf::FloatRect(0.f, 0.f, static_cast<float>(window_width), static_cast<float>(window_height)));
-        gameWorldView.setViewport(sf::FloatRect(0.f, 0.f, 1.f, 1.f));
-        
-        // 初始设置为开始菜单视图
-        window.setView(startMenuView);
-        */
-        
-        messageVisible = false;
-        message.setFont(font);
-        message.setCharacterSize(32);
-        message.setFillColor(sf::Color(255, 0, 0, 128));
-        message.setOutlineColor(sf::Color::Black);
-        message.setOutlineThickness(2);
-        message.setPosition(window_width_ / 2.0f - 100, 50); 
-        message.setString("");
-        std::cout << "UI initialized" << std::endl;
     }
 
     void setFrameRate(int frameRate) { 
         window.setFramerateLimit(frameRate);
         frame_rate_ = frameRate;
     }
-
-    int getFrameRate() {return frame_rate_; }
 
     void run() {
         std::cout << "running UI" << std::endl;
@@ -428,14 +507,12 @@ public:
                 }
             }
             
-
             window.display();
 
             //std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     }
 
-    
 private:
     void set_up_button(sf::RectangleShape& btn, std::string text, sf::Vector2f pos, sf::Vector2f size);
     void draw_start();
@@ -445,14 +522,12 @@ private:
     void drawGrid();
     void drawEntity(Entity entity);
     void drawMark(Entity entity);
-    void drawStorage(Location loc);
     void drawWoodsHeld(Entity entity);
     void drawWoodsDropped();
     void drawTask(Entity entity);
     void drawWoodtext(std::string wood_text, Location loc);
     void drawOneWood(Location loc);
     void drawProcess(Entity entity); //entity is a target
-
     void update_dropped_woods();
     float smoothstep(float x);
     float lerp(int a, int b, float t);
@@ -568,6 +643,9 @@ private:
         else if (event.type == sf::Event::KeyPressed) {
             handleKeyPress(event.key.code);
         }
+        else if (event.type == sf::Event::MouseWheelScrolled) {
+            handleZoom(event.mouseWheelScroll.delta);
+        }
     }
     
     void handleEndMenuEvents(const sf::Event& event) {
@@ -644,23 +722,23 @@ private:
             Location start = {mousePressedPos.x / TILE_SIZE, mousePressedPos.y / TILE_SIZE};
             Location end = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
             if(world_ -> make_storage_area(start, end))
-                showMessage("Storage area built");
+                msg.showMessage("Storage area built");
             else 
-                showMessage("Storage construction failed");
+                msg.showMessage("Storage construction failed");
         }
         else if (selectionMenu.isMarkTreesClicked(mousePos)) {
             std::cout << "Marking trees..." << std::endl;
             if (world_ -> mark_tree(true))
-                showMessage("Trees marked");
+                msg.showMessage("Trees marked");
             else 
-                showMessage("No trees to mark");
+                msg.showMessage("No trees to mark");
         }
         else if (selectionMenu.isMarkTreesClicked(mousePos)) {
             std::cout << "Unmarking trees..." << std::endl;
             if (world_ -> mark_tree(false))
-                showMessage("Mark canceled!");
+                msg.showMessage("Mark canceled!");
             else 
-                showMessage("No marks");
+                msg.showMessage("No marks");
         }
         
         selectionMenu.hide();
@@ -672,16 +750,16 @@ private:
         if (buildMenu.isBuildDoorClicked(mousePos)) {
             std::cout << "Building door..." << std::endl;
             if (world_ -> set_door_blueprint(buildPos)) 
-                showMessage("Door blueprint has been set");
+                msg.showMessage("Door blueprint has been set");
             else 
-                showMessage("Door blueprint construction failed");
+                msg.showMessage("Door blueprint construction failed");
         }
         else if (buildMenu.isBuildWallClicked(mousePos)) {
             std::cout << "Building wall..." << std::endl;
             if (world_ -> set_wall_blueprint(buildPos))
-                showMessage("Wall blueprint has been set");
+                msg.showMessage("Wall blueprint has been set");
             else
-                showMessage("Wall blueprint construction failed");
+                msg.showMessage("Wall blueprint construction failed");
         }
         
         buildMenu.hide();
@@ -689,6 +767,10 @@ private:
 
     void handleKeyPress(sf::Keyboard::Key key) {
         switch (key) {
+            case sf::Keyboard::R: {
+                resetView();
+                break;
+            }
             case sf::Keyboard::Escape: {
                 is_game_paused = true;
                 game_state = GameState::End;
@@ -705,9 +787,9 @@ private:
                     Location start = {mousePressedPos.x / TILE_SIZE, mousePressedPos.y / TILE_SIZE};
                     Location end = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
                     if(world_ -> make_storage_area(start, end))
-                        showMessage("Storage area built");
+                        msg.showMessage("Storage area built");
                     else 
-                        showMessage("Storage construction failed");
+                        msg.showMessage("Storage construction failed");
                 }
                 break;
             }
@@ -715,9 +797,9 @@ private:
                 if (selectionMenu.isVisible()) {
                     std::cout << "Marking trees..." << std::endl;
                     if (world_ -> mark_tree(true))
-                        showMessage("Trees marked");
+                        msg.showMessage("Trees marked");
                     else 
-                        showMessage("No trees to mark");
+                        msg.showMessage("No trees to mark");
                 }
                 break;
             }
@@ -725,9 +807,9 @@ private:
                 if (selectionMenu.isVisible()) {
                     std::cout << "Unmarking trees..." << std::endl;
                     if (world_ -> mark_tree(false))
-                        showMessage("Mark canceled!");
+                        msg.showMessage("Mark canceled!");
                     else 
-                    showMessage("No marks");
+                    msg.showMessage("No marks");
                 }
                 break;
             }
@@ -736,9 +818,9 @@ private:
                     std::cout << "Building door..." << std::endl;
                     Location loc = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
                     if (world_ -> set_door_blueprint(loc)) 
-                        showMessage("Door blueprint has been set");
+                        msg.showMessage("Door blueprint has been set");
                     else 
-                        showMessage("Door blueprint construction failed");
+                        msg.showMessage("Door blueprint construction failed");
                     }
                 break;
             }
@@ -747,9 +829,9 @@ private:
                     std::cout << "Building wall..." << std::endl;
                     Location loc = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
                     if (world_ -> set_wall_blueprint(loc))
-                        showMessage("Wall blueprint has been set");
+                        msg.showMessage("Wall blueprint has been set");
                     else
-                        showMessage("Wall blueprint construction failed");
+                        msg.showMessage("Wall blueprint construction failed");
                     }
                 break;
             }
@@ -758,39 +840,75 @@ private:
         }
     }
 
-    void updateViewPosition(float deltaTime);
+    //Aborted, this cause some display problem
+    sf::Vector2f clampViewPosition(const sf::Vector2f& position) {
+        sf::Vector2f viewSize = gameView.getSize();
+        float halfWidth = viewSize.x / 2;
+        float halfHeight = viewSize.y / 2;
 
-    GameState game_state;
-    StartMenu startMenu;
-    EndMenu endMenu;
-    sf::View startMenuView;  
-    sf::View gameWorldView;
-    std::unique_ptr<World> world_;
-    int window_width_;
-    int window_height_;
-    sf::RenderWindow window;
-    int frame_rate_;
-    sf::Font font;
-    SelectionMenu selectionMenu;
-    BuildMenu buildMenu;
-    sf::Vector2i mousePressedPos;
-    sf::Vector2i mouseCurrentPos;
-    sf::Vector2i rightClickPos;
-    unordered_map<Location, float> display_offset;
-    unordered_map<Location, int> wood_count;
-    bool is_selecting = false;
-    bool is_game_paused = false;
-    std::unordered_map<int, bool> keyStates; 
+        return sf::Vector2f(
+            std::clamp(position.x, MIN_VIEW_X + halfWidth, MAX_VIEW_X - halfWidth),
+            std::clamp(position.y, MIN_VIEW_Y + halfHeight, MAX_VIEW_Y - halfHeight)
+        );
+    }
 
-    /*These are for camera movement
-    sf::View view;
-    float viewMoveSpeed = 200.0f; 
-    */
+    void updateViewPosition(float deltaTime) {
+        float moveAmount = viewMoveSpeed * deltaTime;
+        sf::Vector2f currentCenter = gameView.getCenter();
+        sf::Vector2f newCenter = currentCenter;
 
-    sf::Text message;
-    bool messageVisible;
-    sf::Clock messageTimer;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+            newCenter.x -= moveAmount;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+            newCenter.x += moveAmount;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+            newCenter.y -= moveAmount;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
+            newCenter.y += moveAmount;
+        }
+
+        //newCenter = clampViewPosition(newCenter);
+        gameView.setCenter(newCenter);
+        window.setView(gameView);
+    }
     
+    void handleZoom(float delta) {
+        float zoom = (delta > 0) ? (1.0f - ZOOM_SPEED) : (1.0f + ZOOM_SPEED);
+        float newZoom = currentZoom * zoom;
+        
+        if (newZoom < MIN_ZOOM || newZoom > MAX_ZOOM) {
+            return;
+        }
+        
+        currentZoom = newZoom;
+        
+        sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+        sf::Vector2f beforeCoords = window.mapPixelToCoords(mousePos, gameView);
+        
+        gameView.setSize(window_width_ * currentZoom, window_height_ * currentZoom);
+        
+        sf::Vector2f afterCoords = window.mapPixelToCoords(mousePos, gameView);
+        gameView.move(beforeCoords - afterCoords);
+        
+        window.setView(gameView);
+    }
+    
+    void resetView() {
+        currentZoom = 1.0f;
+        
+        gameView.setSize(static_cast<float>(window_width_), 
+                        static_cast<float>(window_height_));
+        
+        float initial_x = window_width_ / 2.0f;
+        float initial_y = window_height_ / 2.0f;
+        gameView.setCenter(initial_x, initial_y);
+        
+        window.setView(gameView);
+    }
+
     bool hasSelectedEntities() {
         for(auto& entity : world_ -> get_all_entities()) {
             if (isSelected(entity)) {
@@ -798,20 +916,6 @@ private:
             }
         }
         return false;
-    }
-
-    void showMessage(const std::string& text) {
-        message.setString(text);
-        message.setPosition(window_width_ / 2.0f - message.getGlobalBounds().width / 2.0f, 50); 
-        messageVisible = true;
-        messageTimer.restart(); 
-    }
-
-    void updateMessage() {
-        if (messageVisible && messageTimer.getElapsedTime().asSeconds() >= 2.0f) {
-            messageVisible = false;
-            message.setString(""); 
-        }
     }
     
     void draw_location(Entity entity) {
@@ -839,139 +943,6 @@ void UI::drawGrid() {
         line.setPosition(x, 0);
         window.draw(line);
     }
-}
-
-void UI::drawEntity(Entity entity) {
-    //some entities should not be drawn
-    if (!world_ -> component_manager_.has_component<RenderComponent>(entity)) {
-        return;
-    }
-
-    auto& type = world_ -> component_manager_.get_component<RenderComponent>(entity).entityType;
-    auto& pos = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
-    
-    float render_x = static_cast<float>(pos.x);
-    float render_y = static_cast<float>(pos.y);
-
-    if (world_ -> component_manager_.has_component<MovementComponent>(entity)) {
-        auto& movement = world_ -> component_manager_.get_component<MovementComponent>(entity);
-        float t = smoothstep(movement.progress);
-        //std::cout << "progress: " << movement.progress << ", smoothstep: " << t << std::endl;
-        float mid_x = lerp(movement.start_pos.x, movement.end_pos.x, t);
-        float mid_y = lerp(movement.start_pos.y, movement.end_pos.y, t);
-        //std::cout << std::fixed << std::setprecision(3) << "mid loc: (" << mid_x << ", " << mid_y << ")" << std::endl;
-        render_x = lerp(movement.start_pos.x, movement.end_pos.x, t);
-        render_y = lerp(movement.start_pos.y, movement.end_pos.y, t);
-        //std::cout << std::fixed << std::setprecision(3) << "updated render loc: (" << render_x << ", " << render_y << ")" << std::endl;
-    }
-    //std::cout << "entity: " << entity << std::endl;
-    //std::cout << "tile loc: (" << pos.x << ", " << pos.y << ")" << std::endl;
-    //std::cout << "render loc: (" << std::fixed << std::setprecision(2) << render_x << ", " << render_y << ")" << std::endl;
-    float screen_x = render_x * TILE_SIZE;
-    float screen_y = render_y * TILE_SIZE;
-    //std::cout << "screen loc: (" << std::fixed << std::setprecision(2) << screen_x << ", " << screen_y << ")" << std::endl;
-    sf::Text text;
-    text.setFont(font);
-    text.setCharacterSize(999);
-    text.setPosition(screen_x, screen_y);
-
-    sf::Sprite sprite;
-    sprite.setPosition(screen_x, screen_y);
-    sprite.setScale(0.5f, 0.5f);
-
-    switch(type) {
-        case EntityType::CHARACTER: {
-            text.setString("C");
-            text.setFillColor(sf::Color::Blue);
-            if (world_ -> component_manager_.has_component<MovementComponent>(entity)) {
-                auto& movement = world_ -> component_manager_.get_component<MovementComponent>(entity);
-                float bounce = sin(movement.progress * M_PI * 2) * 2.0f;
-                text.setPosition(screen_x, screen_y - bounce);
-            }
-            drawTask(entity);
-            drawWoodsHeld(entity);
-            break;
-        }
-        case EntityType::DOG: {
-            text.setString("A");
-            text.setFillColor(sf::Color(139, 69, 19));
-            if (world_ -> component_manager_.has_component<MovementComponent>(entity)) {
-                auto& movement = world_ -> component_manager_.get_component<MovementComponent>(entity);
-                float bounce = sin(movement.progress * M_PI) * 4.0f;
-                text.setPosition(screen_x, screen_y - bounce);
-            }
-            break;
-        }
-        case EntityType::TREE: {
-            text.setString("T");
-            text.setFillColor(sf::Color::Green);
-            drawMark(entity);
-            sf::Texture treeTexture;
-            if (!treeTexture.loadFromFile("../resources/images/tree.png")) {
-                std::cerr << "Failed to load tree texture" << std::endl;
-            }
-            sprite.setTexture(treeTexture);
-            break;
-        }
-        //if it is blueprint, add something
-        case EntityType::WALL: {
-            text.setString("&&");
-            bool is_wall_blueprint = !world_ -> component_manager_.get_component<ConstructionComponent>(entity).is_built;
-            if (is_wall_blueprint) {
-                drawWoodsHeld(entity);
-                text.setFillColor(sf::Color(120, 65, 18, 128));
-            } else
-                text.setFillColor(sf::Color(139, 69, 19, 255));
-            break;
-        }
-        case EntityType::DOOR: {
-            text.setString("| |");
-            bool is_door_blueprint = !world_ -> component_manager_.get_component<ConstructionComponent>(entity).is_built;
-            if (is_door_blueprint)  {
-                drawWoodsHeld(entity);
-                text.setFillColor(sf::Color(120, 65, 18, 128));
-            } else 
-                text.setFillColor(sf::Color(139, 69, 19, 255));
-            break;
-        }
-        case EntityType::STORAGE: {
-            text.setString(" ");
-            text.setFillColor(sf::Color(139, 69, 19));
-            drawStorage(pos);
-            drawWoodsHeld(entity);
-            break;
-        }
-        case EntityType::WOODPACK: {
-            //only woodpack is target that will be drawn(dropped and not collected yet)
-            if (world_ -> component_manager_.has_component<TargetComponent>(entity)) {
-                auto& target = world_ -> component_manager_.get_component<TargetComponent>(entity);
-                if (target.is_target) {
-                    text.setString("o");
-                    text.setFillColor(sf::Color(139, 69, 19));
-                    /*
-                    auto wood_loc = world_.component_manager_.get_component<LocationComponent>(entity).loc;
-                    text.setPosition(screen_x + display_offset[wood_loc], screen_y - display_offset[wood_loc]);
-                    display_offset[wood_loc] -= TILE_SIZE / 16;
-                    */
-                }
-            }
-            break;
-        }
-    }
-
-    // 绘制选中效果
-    if (isSelected(entity)) {
-        drawSelectionHighlight(screen_x, screen_y);
-    }
-
-    window.draw(text);
-}
-
-void UI::drawStorage(Location loc) {
-    sf::RectangleShape rect(sf::Vector2f(TILE_SIZE, TILE_SIZE));
-    rect.setFillColor(sf::Color(0, 0, 255, 64));
-    rect.setPosition(loc.x * TILE_SIZE, loc.y * TILE_SIZE);
-    window.draw(rect);
 }
 
 //HERE entity is character or storage or blueprint
@@ -1250,6 +1221,10 @@ void UI::draw_end() {
 }
 
 void UI::draw_in(bool background) {
+    static sf::Clock clock;
+    float deltaTime = clock.restart().asSeconds();
+    updateViewPosition(deltaTime);
+
     window.clear(sf::Color::White);
 
     if (background) {
@@ -1263,6 +1238,7 @@ void UI::draw_in(bool background) {
             static_cast<float>(window.getSize().y) / static_cast<float>(bg_texture.getSize().y)
         );
         bgSprite.setScale(scale);
+        bgSprite.setPosition(0, 0);
         sf::Color color = bgSprite.getColor();
         color.a = 120; 
         bgSprite.setColor(color); 
@@ -1295,18 +1271,11 @@ void UI::draw_in(bool background) {
         window.draw(selectionRect);
     }
 
+    msg.draw();
     selectionMenu.draw();
     buildMenu.draw();
 
-    if (messageVisible) {
-        updateMessage();
-        sf::RectangleShape bg;
-        bg.setSize(sf::Vector2f(message.getGlobalBounds().width + 20, message.getGlobalBounds().height + 10));
-        bg.setFillColor(sf::Color(0, 0, 0, 150));
-        bg.setPosition(message.getPosition().x - 10, message.getPosition().y - 5);
-        window.draw(bg);
-        window.draw(message);
-    }
+
 }
 
 void UI::draw_entity(Entity entity) {
