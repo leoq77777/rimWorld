@@ -11,9 +11,9 @@
 
 #define MAP_SIZE 50
 #define MAX_DIST MAP_SIZE*MAP_SIZE
-#define DEFAULT_SPEED 32
-#define FRAMERATE 20
+#define FRAMERATE 30
 #define TILE_SIZE 32
+#define TREE_GEN_TICK 500
 class World {
     friend class UI;
 public:
@@ -42,19 +42,21 @@ public:
           task_system_(component_manager_, entity_manager_, router_),
           rng(static_cast<unsigned>(std::time(nullptr))), 
           dist(0, MAP_SIZE - 1) {
+        timer_ = 0;
         std::cout << "starting a new world" << std::endl;
         register_all_components();
         init_world();
     }
 
     void update_world() {
+        tick();
         create_system_.update();
         task_system_.update();
         action_system_.update();
     }
     
     // Functions operated by USER (maybe by UI)
-    bool mark_tree();
+    bool mark_tree(bool mark);
     bool make_storage_area(Location start, Location end);
     bool set_door_blueprint(Location pos);
     bool set_wall_blueprint(Location pos);
@@ -75,6 +77,7 @@ private:
     // Starter function run every time
     void register_all_components();
     void init_world();
+    void tick();
 
     // Some containers
     std::vector<Entity> characters_;
@@ -83,9 +86,19 @@ private:
     // Random seed
     std::mt19937 rng;
     std::uniform_int_distribution<int> dist;
-};
 
-bool World::mark_tree() {
+    // Timer for tree generation
+    int timer_;
+};
+void World::tick() {
+    ++timer_;
+    if (timer_ >= TREE_GEN_TICK) {
+        generate_random_entity(1, EntityType::TREE);
+        timer_ = 0;
+    }
+}
+
+bool World::mark_tree(bool mark) {
     bool marked = false;
     for(auto& entity : router_.get_all_entities()) {
         if (!component_manager_.has_component<RenderComponent>(entity)) {
@@ -107,7 +120,7 @@ bool World::mark_tree() {
                 });
             } 
             auto& target = component_manager_.get_component<TargetComponent>(entity);
-            target.is_target = !target.is_target;
+            target.is_target = mark;
             marked = true;
         }
     }
@@ -146,7 +159,6 @@ void World::save_world() {
 }
 
 void World::load_world() {
-    register_all_components();
     entity_manager_.load();
     component_manager_.load();
 }
@@ -191,7 +203,7 @@ void World::generate_random_entity(int count, EntityType type) {
         int x = dist(rng);
         int y = dist(rng);
         Location loc{x, y};
-        std::cout << "try create tree at (" << x << ", " << y << ")" << std::endl;
+        std::cout << "try create entity type: " << type << " at (" << x << ", " << y << ")" << std::endl;
         if (router_.is_valid_position(loc)) {
             Entity temp = entity_manager_.create_entity();
             component_manager_.add_component(temp, LocationComponent{loc});
@@ -203,8 +215,8 @@ void World::generate_random_entity(int count, EntityType type) {
 
 void World::init_world() {
     std::cout << "initializing world" << std::endl;
-    generate_random_entity( 2, EntityType::CHARACTER );
-    generate_random_entity( 1, EntityType::DOG );
+    generate_random_entity( 1, EntityType::CHARACTER );
+    //generate_random_entity( 1, EntityType::DOG );
     generate_random_entity( 10, EntityType::TREE );
     create_system_.update();
 }

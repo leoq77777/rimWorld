@@ -7,14 +7,11 @@
 #include <limits.h>
 #include "../entities/entity.hpp"
 
-using Dir = std::pair<int, int>;
-using Path = std::vector<Dir>;
-const std::vector<Dir> directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
-
 class Router {
     ComponentManager& component_manager_;
     EntityManager& entity_manager_;
     std::vector<std::vector<bool>> mark_map_;
+    std::vector<std::vector<bool>> slow_map_;
     int MAP_SIZE_;
 public:
     Router();
@@ -24,14 +21,14 @@ public:
         entity_manager_(entity_manager),
         MAP_SIZE_(map_size) {
             mark_map_.resize(MAP_SIZE_, std::vector<bool>(MAP_SIZE_, false));
+            slow_map_.resize(MAP_SIZE_, std::vector<bool>(MAP_SIZE_, false));
             std::cout << "Router initialized" << std::endl;
         }
 
     bool is_in_locations(const Location& pos, const Locations& target_locations) {
         for(auto& target_location : target_locations) {
-            if(pos == target_location) {
+            if(pos == target_location)
                 return true;
-            }
         }
         return false;
     }
@@ -45,16 +42,30 @@ public:
     }
     
     void update_collision() {
+        for(int i = 0; i < MAP_SIZE_; ++i) {
+            for(int j = 0; j < MAP_SIZE_; ++j) {
+                mark_map_[i][j] = false;
+                slow_map_[i][j] = false;
+            }
+        }
+
         for(auto& entity : get_entities_with_components<RenderComponent>()) {
             if (component_manager_.has_component<TargetComponent>(entity)) {
                 auto& target = component_manager_.get_component<TargetComponent>(entity);
                 if (target.to_be_deleted) 
                     continue;
             }
+
+            assert(component_manager_.has_component<LocationComponent>(entity));
+            auto loc = component_manager_.get_component<LocationComponent>(entity).loc;
             auto collision = component_manager_.get_component<RenderComponent>(entity).collidable;
-            if (collision == true) {    
-                auto& loc = component_manager_.get_component<LocationComponent>(entity).loc;
-                mark_map_[loc.x][loc.y] = true;
+            mark_map_[loc.x][loc.y] = collision;
+
+            auto& render = component_manager_.get_component<RenderComponent>(entity);
+            if (render.entityType == EntityType::DOOR) {
+                assert(component_manager_.has_component<ConstructionComponent>(entity));
+                auto construction = component_manager_.get_component<ConstructionComponent>(entity);
+                slow_map_[loc.x][loc.y] = construction.is_built;
             }
         }
     }
@@ -65,6 +76,10 @@ public:
         update_collision();
         return !mark_map_[pos.x][pos.y];
     }
+
+    bool to_be_slow(const Location loc) {
+        return slow_map_[loc.x][loc.y];
+    } 
 
     Locations get_locations_around(const Location& pos) {
         Locations locations;
@@ -82,15 +97,18 @@ public:
             return true;
         }
         auto& move = component_manager_.get_component<MovementComponent>(entity);
-        return move.progress >= 1.0 || move.progress <= 0.0 || (move.start_pos == move.end_pos);
+        return move.progress >= 1.0 || move.progress <= 0.0 
+            || (move.start_pos == move.end_pos);
     }
 
     bool is_reachable(const Location& start, const Locations& end_locations) {
-        if (find_path_to_locations(start, end_locations).size() != 0) {
+        if (find_path_to_locations(start, end_locations, "Ax").size() != 0) {
             return true;
         } else {
             for(auto& end_location : end_locations) {
-                if (end_location == start) {
+                if (end_location == start || 
+                    start.x == end_location.x && abs(start.y - end_location.y) == 1 ||
+                    start.y == end_location.y && abs(start.x - end_location.x) == 1) {
                     return true;
                 }
             }
@@ -98,18 +116,16 @@ public:
         }
     }
 
-    Path find_path_to_locations(const Location& start, const Locations& end_locations) {
+    Path find_path_to_locations(const Location& start, const Locations& end_locations, std::string method) {
         for (int i = 0; i < end_locations.size(); ++i) {
-            auto path = find_path(start, end_locations[i]);
-            if (path.size() > 0) {
-                //std::cout << "path found for one end!" << std::endl;
+            auto path = method == "BFS" ? find_path_BFS(start, end_locations[i]) : find_path_Ax(start, end_locations[i]);
+            if (path.size() > 0)
                 return path;
-            }
         }
         return {};
     }
 
-    Path find_path(const Location& start, const Location& end) {
+    Path find_path_BFS(const Location& start, const Location& end) {
         //std::cout << "try to find path from (" << start.x << ", " << start.y << ") to (" << end.x << ", " << end.y << ")" << std::endl;
         if (start == end) return {};
 
@@ -124,16 +140,14 @@ public:
             for (const auto& direction : directions) {
                 Location next = {current.x + direction.first, current.y + direction.second};
 
-                // 检查下一个位置是否在地图范围内并且没有被访问过
                 if (is_valid_position(next) && came_from.find(next) == came_from.end()) {
                     queue.push(next);
                     came_from[next] = current;
 
-                    // 如果找到目标位置，构建路径
                     if (next == end) {
                         Path path;
                         for (Location step = end; step != start; step = came_from[step]) {
-                            path.push_back({step.x, step.y});
+                            path.push_back(Location{step.x, step.y});
                         }
                         std::reverse(path.begin(), path.end());
                         return path;
@@ -141,10 +155,59 @@ public:
                 }
             }
         }
-        return {}; // 如果没有找到路径，返回空路径
+        return {};
     }
 
+    struct CompareLocation {
+        bool operator()(const std::pair<int, Location>& left, const std::pair<int, Location>& right) {
+            return left.first > right.first; 
+        }
+    };
 
+    int heuristic(const Location& a, const Location& b) { return abs(a.x - b.x) + abs(a.y - b.y); }
+
+    Path find_path_Ax(const Location& start, const Location& end) {
+        if (start == end) return {};
+
+        std::priority_queue<std::pair<int, Location>, std::vector<std::pair<int, Location>>, CompareLocation> pq;
+        pq.push({0, start});
+
+        std::unordered_map<Location, int, std::hash<Location>> cost_so_far;
+        cost_so_far[start] = 0;
+
+        std::unordered_map<Location, Location, std::hash<Location>> came_from;
+        came_from[start] = start;
+
+        while (!pq.empty()) {
+            auto [priority, current] = pq.top();
+            pq.pop();
+
+            if (current == end) {
+                Path path;
+                for (Location step = end; came_from.find(step) != came_from.end() && step != start; step = came_from[step]) {
+                    path.push_back(Location{step.x, step.y});
+                }
+                path.push_back(Location{start.x, start.y}); // 加入起始点
+                std::reverse(path.begin(), path.end());
+                return path;
+            }
+
+            for (const auto& direction : directions) {
+                Location next = {current.x + direction.first, current.y + direction.second};
+
+                int new_cost = cost_so_far[current] + 1; // 假设每个移动的代价为1
+
+                if (is_valid_position(next) && (cost_so_far.find(next) == cost_so_far.end() || new_cost < cost_so_far[next])) {
+                    cost_so_far[next] = new_cost;
+                    int priority = new_cost + heuristic(end, next);
+                    pq.push({priority, next});
+                    came_from[next] = current;
+                }
+            }
+        }
+        return {};   
+    }
+    
     Entities get_all_entities() {
         return entity_manager_.get_all_entities();
     }
@@ -206,6 +269,17 @@ public:
             }
         }
         return storage_areas;
+    }
+    Entities get_blueprints() {
+        Entities blueprints;
+        for(auto& entity : get_all_entities()) {
+            if (component_manager_.has_component<RenderComponent>(entity) && 
+                (component_manager_.get_component<RenderComponent>(entity).entityType == EntityType::DOOR ||
+                component_manager_.get_component<RenderComponent>(entity).entityType == EntityType::WALL )) {
+                blueprints.emplace_back(entity);
+            }
+        }
+        return blueprints;
     }
 
     Entities get_placeable_areas() {

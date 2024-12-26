@@ -4,7 +4,7 @@
 int main() {
     std::cout << "Game initializing..." << std::endl;
 
-    bool is_fullscreen = true;
+    bool is_fullscreen = false;
     sf::VideoMode desktopMode = sf::VideoMode::getDesktopMode();
     int custom_width = 1280, custom_height = 720;
     int resolution_width = is_fullscreen ? desktopMode.width : custom_width;
@@ -12,6 +12,7 @@ int main() {
     
     try {
         UI ui(resolution_width, resolution_height);
+        ui.setFrameRate(30);
         ui.run();        
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

@@ -79,8 +79,10 @@ class SelectionMenu {
     sf::RectangleShape menuBackground;
     sf::Text buildStorageBtn;
     sf::Text markTreesBtn;
+    sf::Text unMarkBtn;
     sf::RectangleShape buildStorageBtnBox;
     sf::RectangleShape markTreesBtnBox;
+    sf::RectangleShape unMarkBtnBox;
     sf::Font font;
     bool isVisible_ = false;
 public:
@@ -90,24 +92,29 @@ public:
             std::cerr << "Failed to load font!" << std::endl;
         }
         menuBackground.setFillColor(sf::Color(50, 50, 50, 50));
-        menuBackground.setSize(sf::Vector2f(175, 85));
-        setupButton(buildStorageBtn, buildStorageBtnBox, "Set Storage (1)", 0);
-        setupButton(markTreesBtn, markTreesBtnBox, "Mark Trees (2) ", 1);
+        menuBackground.setSize(sf::Vector2f(190, 125));
+        setupButton(buildStorageBtn, buildStorageBtnBox, "  Set Storage (1)  ", 0);
+        setupButton(markTreesBtn, markTreesBtnBox, "  Mark Trees (2)   ", 1);
+        setupButton(unMarkBtn, unMarkBtnBox, "  Cancel Marks (3)", 2);
     }
 
     void show(sf::Vector2i position) {
         isVisible_ = true;
         menuBackground.setPosition(position.x, position.y);
+
         buildStorageBtn.setPosition(position.x + 10, position.y + 10);
         markTreesBtn.setPosition(position.x + 10, position.y + 45);
+        unMarkBtn.setPosition(position.x + 10, position.y + 80);
+
         buildStorageBtnBox.setPosition(position.x + 10, position.y + 10);
         markTreesBtnBox.setPosition(position.x + 10, position.y + 45);
+        unMarkBtnBox.setPosition(position.x + 10, position.y + 80);
     }
 
     void hide() { 
         isVisible_ = false; 
-    
     }
+
     bool isVisible() const {    
         return isVisible_; 
     }
@@ -117,32 +124,40 @@ public:
         window_.draw(menuBackground);
         window_.draw(buildStorageBtnBox);
         window_.draw(markTreesBtnBox);
+        window_.draw(unMarkBtnBox);
         window_.draw(buildStorageBtn);
         window_.draw(markTreesBtn);
+        window_.draw(unMarkBtn);
     }
 
     bool isBuildStorageClicked(sf::Vector2i mousePos) {
-        return isVisible_ && buildStorageBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && buildStorageBtnBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool notBuildStorageClicked(sf::Vector2i mousePos) {
-        return isVisible_ && !buildStorageBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && !buildStorageBtnBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool isMarkTreesClicked(sf::Vector2i mousePos) {
-        return isVisible_ && markTreesBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && markTreesBtnBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool notMarkTreesClicked(sf::Vector2i mousePos) {
-        return isVisible_ && !markTreesBtn.getGlobalBounds().contains(mousePos.x, mousePos.y);
+        return isVisible_ && !markTreesBtnBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
+    }
+
+    bool isUnmarkClicked(sf::Vector2i mousePos) {
+        return isVisible_ && unMarkBtnBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
+    }
+
+    bool notUnmarkClicked(sf::Vector2i mousePos) {
+        return isVisible_ && !unMarkBtnBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
     }
 
     bool handleClick(sf::Vector2i mousePos) {
         if (!isVisible_) return false;
-        
-        if (isBuildStorageClicked(mousePos) || isMarkTreesClicked(mousePos)) {
+        if (isBuildStorageClicked(mousePos) || isMarkTreesClicked(mousePos) || isUnmarkClicked(mousePos)) 
             return true;
-        }
         return false;
     }
 
@@ -157,7 +172,7 @@ private:
         rect.setOutlineColor(sf::Color::White);
         rect.setOutlineThickness(2);
         sf::FloatRect textRect = btn.getLocalBounds();
-        rect.setSize(sf::Vector2f(textRect.width + 10, textRect.height + 10));  
+        rect.setSize(sf::Vector2f(168, 30));  
     }   
 };
 
@@ -209,7 +224,7 @@ public:
 
         float buttonPosX = (window_width_ - panelWidth) / 2 + (panelWidth - 150) / 2;
         float buttonPosY = (window_height_ - panelHeight) / 2 + panelHeight / 2 - 25;
-        setupButton(saveAndExitButton, saveAndExitButtonBox, "Save and Exit", buttonPosX, buttonPosY);
+        setupButton(saveAndExitButton, saveAndExitButtonBox, "Save and Exit(S)", buttonPosX, buttonPosY);
     }
 
     void draw() {
@@ -249,8 +264,8 @@ public:
         menuBackground.setOutlineColor(sf::Color::Red);
         menuBackground.setOutlineThickness(3);
         menuBackground.setSize(sf::Vector2f(175, 85));
-        setupButton(buildDoorBtn, doorRect, "  Build Door (3)  ", 0);
-        setupButton(buildWallBtn, wallRect, "  Build Wall  (4)  ", 1);
+        setupButton(buildDoorBtn, doorRect, "  Build Door  (4)  ", 0);
+        setupButton(buildWallBtn, wallRect, "  Build Wall  (5)  ", 1);
     }
 
     void show(sf::Vector2i position) {
@@ -308,7 +323,7 @@ private:
         rect.setOutlineColor(sf::Color::White);
         rect.setOutlineThickness(2);
         sf::FloatRect textRect = btn.getLocalBounds();
-        rect.setSize(sf::Vector2f(textRect.width + 10, textRect.height + 10)); 
+        rect.setSize(sf::Vector2f(156, 30)); 
 
     }
 
@@ -358,6 +373,13 @@ public:
         std::cout << "UI initialized" << std::endl;
     }
 
+    void setFrameRate(int frameRate) { 
+        window.setFramerateLimit(frameRate);
+        frame_rate_ = frameRate;
+    }
+
+    int getFrameRate() {return frame_rate_; }
+
     void run() {
         std::cout << "running UI" << std::endl;
         sf::Clock clock;
@@ -366,17 +388,19 @@ public:
         startNewGame();
         while (window.isOpen()) {
 
-            std::cout << "\n\n-----Round " << ++round << std::endl;
 
-            world_ -> update_world();
 
             handleEvents(clock);
-            
-            draw();
+
+            if( !is_game_paused ) {
+                std::cout << "\n\n-----Round " << ++round << std::endl;
+                world_ -> update_world();
+                draw();
+            }
 
             window.display();
 
-            //std::this_thread::sleep_for(std::chrono::seconds(1));
+            //std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     }
 
@@ -402,7 +426,9 @@ public:
         }
 
         drawGrid();
-
+        //drawWoodsDropped();
+        //here i dividely draw woods that are dropped and held by some entities
+        //and for efficiency, only draw one of them at a time
         for(auto& entity : world_ -> get_all_entities()) {
             new_draw_entity(entity);
         }
@@ -422,7 +448,6 @@ public:
             selectionRect.setFillColor(sf::Color(255, 255, 255, 128));
             window.draw(selectionRect);
         }
-          
         selectionMenu.draw();
         buildMenu.draw();
 
@@ -462,10 +487,11 @@ public:
                 }
                 sprite.setTexture(tree_texture);
                 auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
-                sprite.setPosition(render_x - TILE_SIZE / 8, render_y - TILE_SIZE);
+                sprite.setPosition(render_x - TILE_SIZE / 8, render_y - TILE_SIZE / 2);
                 sprite.setScale(0.25f, 0.25f);
                 window.draw(sprite);
                 drawMark(entity);
+                drawProcess(entity);
                 break;
             }
             case EntityType::CHARACTER: {
@@ -478,6 +504,7 @@ public:
                 sprite.setScale(0.5f, 0.5f);
                 window.draw(sprite);
                 //drawTask(entity);
+                drawWoodsHeld(entity);
                 break;
             }
             case EntityType::DOG: {
@@ -507,6 +534,7 @@ public:
                     sprite.setColor(color);
                 }
                 window.draw(sprite);
+                drawProcess(entity);
                 break;
             }
             case EntityType::WALL: {
@@ -524,6 +552,7 @@ public:
                     sprite.setColor(color);
                 }
                 window.draw(sprite);
+                drawProcess(entity);
                 break;
             }
             case EntityType::STORAGE: {
@@ -538,19 +567,32 @@ public:
                 color.a = 140;
                 sprite.setColor(color);
                 window.draw(sprite);
+                drawWoodsHeld(entity);
+                drawProcess(entity);
                 break;
             }
+            /* aborted: draw wood pack
             case EntityType::WOODPACK: {
+                
                 sf::Texture wood_texture;
                 if (!wood_texture.loadFromFile("../resources/images/wood.png")) {
                     std::cerr << "Failed to load wodd texture" << std::endl;
                 }
                 sprite.setTexture(wood_texture);
                 sprite.setPosition(render_x, render_y);
-                sprite.setScale(0.5f, 0.5f);
+                sf::Vector2f wood_scale(
+                    static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().x),
+                    static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().y)
+                );
+                sprite.setScale(wood_scale);
                 window.draw(sprite);
+                sf::CircleShape wood(TILE_SIZE/2);
+                wood.setPosition(render_x, render_y);
+                wood.setFillColor(sf::Color(139, 69, 19, 120));
+                window.draw(wood);
                 break;
             }
+            */
             default:
                 break;
         }
@@ -558,15 +600,19 @@ public:
 
 private:
     void drawGame();
+    void drawStartMenu();
     void drawEndMenu();
 
     void drawGrid();
     void drawEntity(Entity entity);
     void drawMark(Entity entity);
     void drawStorage(Location loc);
-    void drawWood(Entity entity);
+    void drawWoodsHeld(Entity entity);
+    void drawWoodsDropped();
     void drawTask(Entity entity);
-    void drawWoodtext();
+    void drawWoodtext(std::string wood_text, Location loc);
+    void drawOneWood(Location loc);
+    void drawProcess(Entity entity); //entity is a target
 
     void update_dropped_woods();
     float smoothstep(float x);
@@ -592,6 +638,11 @@ private:
         }
     }
 
+    void save_and_exit() {
+        world_ -> save_world();
+        window.close();
+    }
+
     bool isSelected(Entity entity) { 
         auto& render = world_ -> component_manager_.get_component<RenderComponent>(entity);
         return render.is_selected;
@@ -607,24 +658,20 @@ private:
         }
     }
 
-    void select_entities_in_area(sf::Vector2i start, sf::Vector2i end) {
+    void select_entities_in_area(sf::Vector2i start, sf::Vector2i end, bool select) {
         int minX = std::min(start.x, end.x) / TILE_SIZE;
         int maxX = std::max(start.x, end.x) / TILE_SIZE;
         int minY = std::min(start.y, end.y) / TILE_SIZE;
         int maxY = std::max(start.y, end.y) / TILE_SIZE;
         
         for(auto& entity : world_ -> get_all_entities()) {
-            if (!world_ -> component_manager_.has_component<RenderComponent>(entity)) {
+            if (!world_ -> component_manager_.has_component<RenderComponent>(entity))
                 continue;
-            }
             auto& render = world_ -> component_manager_.get_component<RenderComponent>(entity);
             auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
             
-            if (loc.x >= minX && loc.x <= maxX && 
-                loc.y >= minY && loc.y <= maxY) {
-                render.is_selected = true;
-                std::cout << "Entity " << entity << " is selected" << std::endl;
-            }
+            if (loc.x >= minX && loc.x <= maxX && loc.y >= minY && loc.y <= maxY)
+                render.is_selected = select;
         }
     }
 
@@ -652,11 +699,16 @@ private:
     void handleStartMenuEvents(const sf::Event& event) {
         if (event.type == sf::Event::MouseButtonPressed && game_state == GameState::StartMenu) {
             auto mousePos = sf::Mouse::getPosition(window);
-            if (startMenu.isButtonClicked(mousePos, "New Game")) {
+            if (startMenu.isButtonClicked(mousePos, "New Game(N)")) {
                 startNewGame();
-            } else if (startMenu.isButtonClicked(mousePos, "Load Game")) {
+            } else if (startMenu.isButtonClicked(mousePos, "Load Game(L)")) {
                 loadExistingGame();
             }
+        } else if (event.type == sf::Event::KeyPressed) {
+            if (event.key.code == sf::Keyboard::N)
+                startNewGame();
+            else if (event.key.code == sf::Keyboard::L)
+                loadExistingGame();
         }
         startMenu.updateHover(sf::Mouse::getPosition(window));
     }
@@ -669,24 +721,23 @@ private:
             handleMouseRelease(event);
         }
         else if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
-                game_state = GameState::EndMenu;
-            }
+            handleKeyPress(event.key.code);
         }
     }
     
     void handleEndMenuEvents(const sf::Event& event) {
         if (event.type == sf::Event::MouseButtonPressed && game_state == GameState::EndMenu) {
             auto mousePos = sf::Mouse::getPosition(window);
-            if (endMenu.isButtonClicked(mousePos)) {
-                window.close();
-            }
+            if (endMenu.isButtonClicked(mousePos))
+                save_and_exit();
         }
         endMenu.updateHover(sf::Mouse::getPosition(window));
+
         if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
+            if (event.key.code == sf::Keyboard::Escape) 
                 game_state = GameState::InGame;
-            }
+            else if (event.key.code == sf::Keyboard::S)
+                save_and_exit();
         }
     }
 
@@ -710,7 +761,9 @@ private:
             mousePressedPos = mousePos;
             is_selecting = true;
             
-            if (selectionMenu.notBuildStorageClicked(mousePos) && selectionMenu.notMarkTreesClicked(mousePos))
+            if (selectionMenu.notBuildStorageClicked(mousePos)
+                && selectionMenu.notMarkTreesClicked(mousePos)
+                && selectionMenu.notUnmarkClicked(mousePos))
                 selectionMenu.hide();
             if (buildMenu.notBuildDoorClicked(mousePos) && buildMenu.notBuildWallClicked(mousePos))
                 buildMenu.hide();
@@ -726,9 +779,12 @@ private:
         if (event.mouseButton.button == sf::Mouse::Left) {
             is_selecting = false;
             mouseCurrentPos = sf::Mouse::getPosition(window);
-            select_entities_in_area(mousePressedPos, mouseCurrentPos);
+            select_entities_in_area(mousePressedPos, mouseCurrentPos, true);
             
-            selectionMenu.show(mouseCurrentPos);
+            if (!selectionMenu.isVisible())
+                selectionMenu.show(mouseCurrentPos);
+            else
+                selectionMenu.hide();
         }
     }
 
@@ -737,21 +793,24 @@ private:
             std::cout << "Building storage area..." << std::endl;
             Location start = {mousePressedPos.x / TILE_SIZE, mousePressedPos.y / TILE_SIZE};
             Location end = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
-            if(world_ -> make_storage_area(start, end)) {
+            if(world_ -> make_storage_area(start, end))
                 showMessage("Storage area built");
-            }
-            else {
+            else 
                 showMessage("Storage construction failed");
-            }
         }
         else if (selectionMenu.isMarkTreesClicked(mousePos)) {
             std::cout << "Marking trees..." << std::endl;
-            if (world_ -> mark_tree()) {
+            if (world_ -> mark_tree(true))
                 showMessage("Trees marked");
-            }
-            else {
+            else 
                 showMessage("No trees to mark");
-            }
+        }
+        else if (selectionMenu.isMarkTreesClicked(mousePos)) {
+            std::cout << "Unmarking trees..." << std::endl;
+            if (world_ -> mark_tree(false))
+                showMessage("Mark canceled!");
+            else 
+                showMessage("No marks");
         }
         
         selectionMenu.hide();
@@ -762,21 +821,17 @@ private:
         
         if (buildMenu.isBuildDoorClicked(mousePos)) {
             std::cout << "Building door..." << std::endl;
-            if (world_ -> set_door_blueprint(buildPos)) {
+            if (world_ -> set_door_blueprint(buildPos)) 
                 showMessage("Door blueprint has been set");
-            }
-            else {
+            else 
                 showMessage("Door blueprint construction failed");
-            }
         }
         else if (buildMenu.isBuildWallClicked(mousePos)) {
             std::cout << "Building wall..." << std::endl;
-            if (world_ -> set_wall_blueprint(buildPos)) {
+            if (world_ -> set_wall_blueprint(buildPos))
                 showMessage("Wall blueprint has been set");
-            }
-            else {
+            else
                 showMessage("Wall blueprint construction failed");
-            }
         }
         
         buildMenu.hide();
@@ -784,37 +839,70 @@ private:
 
     void handleKeyPress(sf::Keyboard::Key key) {
         switch (key) {
-            case sf::Keyboard::Num1:
+            case sf::Keyboard::Escape: {
+                game_state = GameState::EndMenu;
+                break;
+            }
+            case sf::Keyboard::Space: {
+                is_game_paused = !is_game_paused;
+                std::cout << (is_game_paused ? "game pause!" : "game continue!") << std::endl;
+                break;
+            }
+            case sf::Keyboard::Num1: {
                 if (selectionMenu.isVisible()) {
                     std::cout << "Building storage area..." << std::endl;
-                    //world_.make_storage_area(mousePressedPos, mouseCurrentPos);
-                    selectionMenu.hide();
+                    Location start = {mousePressedPos.x / TILE_SIZE, mousePressedPos.y / TILE_SIZE};
+                    Location end = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
+                    if(world_ -> make_storage_area(start, end))
+                        showMessage("Storage area built");
+                    else 
+                        showMessage("Storage construction failed");
                 }
                 break;
-            case sf::Keyboard::Num2:
+            }
+            case sf::Keyboard::Num2: {
                 if (selectionMenu.isVisible()) {
                     std::cout << "Marking trees..." << std::endl;
-                    //world_.mark_tree();
-                    selectionMenu.hide();
+                    if (world_ -> mark_tree(true))
+                        showMessage("Trees marked");
+                    else 
+                        showMessage("No trees to mark");
                 }
                 break;
-            case sf::Keyboard::Num3:
+            }
+            case sf::Keyboard::Num3: {
+                if (selectionMenu.isVisible()) {
+                    std::cout << "Unmarking trees..." << std::endl;
+                    if (world_ -> mark_tree(false))
+                        showMessage("Mark canceled!");
+                    else 
+                    showMessage("No marks");
+                }
+                break;
+            }
+            case sf::Keyboard::Num4: {
                 if (buildMenu.isVisible()) {
                     std::cout << "Building door..." << std::endl;
-                    //world_.set_door_blueprint(rightClickPos);
-                    buildMenu.hide();
-                }
+                    Location loc = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
+                    if (world_ -> set_door_blueprint(loc)) 
+                        showMessage("Door blueprint has been set");
+                    else 
+                        showMessage("Door blueprint construction failed");
+                    }
                 break;
-            case sf::Keyboard::Num4:
+            }
+            case sf::Keyboard::Num5: {
                 if (buildMenu.isVisible()) {
                     std::cout << "Building wall..." << std::endl;
-                    //world_.set_wall_blueprint(rightClickPos);
-                    buildMenu.hide();
-                }
+                    Location loc = {mouseCurrentPos.x / TILE_SIZE, mouseCurrentPos.y / TILE_SIZE};
+                    if (world_ -> set_wall_blueprint(loc))
+                        showMessage("Wall blueprint has been set");
+                    else
+                        showMessage("Wall blueprint construction failed");
+                    }
                 break;
-            case sf::Keyboard::Escape:
-                selectionMenu.hide();
-                buildMenu.hide();
+            }
+            default:
                 break;
         }
     }
@@ -830,6 +918,7 @@ private:
     int window_width_;
     int window_height_;
     sf::RenderWindow window;
+    int frame_rate_;
     sf::Font font;
     SelectionMenu selectionMenu;
     BuildMenu buildMenu;
@@ -839,6 +928,7 @@ private:
     unordered_map<Location, float> display_offset;
     unordered_map<Location, int> wood_count;
     bool is_selecting = false;
+    bool is_game_paused = false;
     std::unordered_map<int, bool> keyStates; 
 
     /*These are for camera movement
@@ -870,25 +960,6 @@ private:
         if (messageVisible && messageTimer.getElapsedTime().asSeconds() >= 2.0f) {
             messageVisible = false;
             message.setString("No message"); 
-        }
-    }
-
-    void update_offset() {
-        //get all woods entity, and update display_offset
-        //based on how many packs on the same tile
-        for(auto& entity : world_ -> get_all_entities()) {
-            if (!world_ -> component_manager_.has_component<RenderComponent>(entity)) {
-                continue;
-            }
-            auto& render = world_ -> component_manager_.get_component<RenderComponent>(entity);
-            if (render.entityType == EntityType::WOODPACK) {
-                auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
-                if (display_offset.find(loc) == display_offset.end()) {
-                    display_offset[loc] = -2 * TILE_SIZE / 16;
-                } else {
-                    display_offset[loc] += TILE_SIZE / 16;
-                }
-            }
         }
     }
     
@@ -967,7 +1038,7 @@ void UI::drawEntity(Entity entity) {
                 text.setPosition(screen_x, screen_y - bounce);
             }
             drawTask(entity);
-            drawWood(entity);
+            drawWoodsHeld(entity);
             break;
         }
         case EntityType::DOG: {
@@ -996,7 +1067,7 @@ void UI::drawEntity(Entity entity) {
             text.setString("&&");
             bool is_wall_blueprint = !world_ -> component_manager_.get_component<ConstructionComponent>(entity).is_built;
             if (is_wall_blueprint) {
-                drawWood(entity);
+                drawWoodsHeld(entity);
                 text.setFillColor(sf::Color(120, 65, 18, 128));
             } else
                 text.setFillColor(sf::Color(139, 69, 19, 255));
@@ -1006,7 +1077,7 @@ void UI::drawEntity(Entity entity) {
             text.setString("| |");
             bool is_door_blueprint = !world_ -> component_manager_.get_component<ConstructionComponent>(entity).is_built;
             if (is_door_blueprint)  {
-                drawWood(entity);
+                drawWoodsHeld(entity);
                 text.setFillColor(sf::Color(120, 65, 18, 128));
             } else 
                 text.setFillColor(sf::Color(139, 69, 19, 255));
@@ -1016,7 +1087,7 @@ void UI::drawEntity(Entity entity) {
             text.setString(" ");
             text.setFillColor(sf::Color(139, 69, 19));
             drawStorage(pos);
-            drawWood(entity);
+            drawWoodsHeld(entity);
             break;
         }
         case EntityType::WOODPACK: {
@@ -1052,8 +1123,8 @@ void UI::drawStorage(Location loc) {
     window.draw(rect);
 }
 
-//HERE entity is character or storager or blueprint
-void UI::drawWood(Entity entity) {
+//HERE entity is character or storage or blueprint
+void UI::drawWoodsHeld(Entity entity) {
     std::string info;
 
     if(!world_ -> component_manager_.has_component<RenderComponent>(entity)) {
@@ -1082,7 +1153,7 @@ void UI::drawWood(Entity entity) {
             auto& storage = world_ -> component_manager_.get_component<StorageComponent>(entity);
             amount = storage.current_storage;
             int target_amount = storage.storage_capacity;
-            info = "Allocating: " + std::to_string(amount) + " / " + std::to_string(target_amount);
+            info = "Allocated: " + std::to_string(amount) + " / " + std::to_string(target_amount);
         }
     } else {
         return;
@@ -1092,28 +1163,22 @@ void UI::drawWood(Entity entity) {
         return;
     } 
 
-    auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
-    //draw wood
-    int pack = amount / 5;
-    for(int i = 0; i < pack; i++) {
-        float pile = (i - 2) * TILE_SIZE / 16;
-        sf::Text wood;
-        wood.setFont(font);
-        wood.setCharacterSize(TILE_SIZE);
-        wood.setPosition(loc.x * TILE_SIZE + pile, loc.y * TILE_SIZE - pile);
-        wood.setString("o");
-        wood.setFillColor(sf::Color(139, 69, 19));
-        window.draw(wood);
-    }
+    auto loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
+    drawOneWood(loc);
+    //drawWoodtext(info, loc);
+}
 
-    //draw wood text
-    sf::Text wood_text;
-    wood_text.setFont(font);
-    wood_text.setCharacterSize(TILE_SIZE / 2);
-    wood_text.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 2, loc.y * TILE_SIZE + 3 * TILE_SIZE / 4);
-    wood_text.setString(info);
-    wood_text.setFillColor(sf::Color(139, 69, 19));
-    window.draw(wood_text);
+void UI::drawWoodsDropped() {
+    update_dropped_woods();
+    for(auto& pair : wood_count) {
+        Location loc = pair.first;
+        int amount = pair.second;
+        auto wood_text = "Dropped: " + std::to_string(amount);
+        if (amount > 0) {
+            drawOneWood(loc);
+            drawWoodtext(wood_text, loc);
+        }
+    }
 }
 
 void UI::drawMark(Entity entity) {
@@ -1124,8 +1189,8 @@ void UI::drawMark(Entity entity) {
     auto& target = world_ -> component_manager_.get_component<TargetComponent>(entity);
     if (target.is_target) {
         auto& pos = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
-        float screen_x = pos.x * TILE_SIZE + TILE_SIZE / 4;
-        float screen_y = pos.y * TILE_SIZE + TILE_SIZE / 4;
+        float screen_x = pos.x * TILE_SIZE;
+        float screen_y = pos.y * TILE_SIZE;
         std::cout << "mark tree at " << pos.x << ", " << pos.y << std::endl;
         sf::CircleShape circle(TILE_SIZE / 2);
         circle.setFillColor(sf::Color(0, 255, 0, 32));
@@ -1190,32 +1255,72 @@ void UI::drawTask(Entity entity) {
     window.draw(task_text);
 }
 
-void UI::drawWoodtext() {
-    for(auto& pair : wood_count) {
-        auto& loc = pair.first;
-        auto count = pair.second * 5;
-        if(count == 0)
-            continue;
-        sf::Text wood_text;
-        wood_text.setFont(font);
-        wood_text.setCharacterSize(TILE_SIZE / 2);
-        wood_text.setString(std::to_string(count) + " woods");
-        wood_text.setFillColor(sf::Color(139, 69, 19));
-        wood_text.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 2, loc.y * TILE_SIZE + 3 * TILE_SIZE / 4);
-        window.draw(wood_text);
-    }
+void UI::drawWoodtext(std::string wood_text, Location loc) {
+    sf::Text info;
+    info.setFont(font);
+    info.setCharacterSize(TILE_SIZE / 2);
+
+    sf::RectangleShape bg(sf::Vector2f(info.getGlobalBounds().width + 10, info.getGlobalBounds().height + 5));
+    bg.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 2, loc.y * TILE_SIZE + 3 * TILE_SIZE / 4 - 5);
+    bg.setFillColor(sf::Color(0, 0, 0, 150));
+
+    info.setString(wood_text);
+    info.setFillColor(sf::Color(139, 69, 19));
+    info.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 2, loc.y * TILE_SIZE + 3 * TILE_SIZE / 4);
+
+    window.draw(bg);
+    window.draw(info);
+}
+
+void UI::drawOneWood(Location loc) {
+    sf::Texture wood_texture;
+    wood_texture.loadFromFile("../resources/images/woodpack.png");
+    sf::Sprite wood(wood_texture);
+    wood.setPosition(loc.x * TILE_SIZE, loc.y * TILE_SIZE);
+    sf::Vector2f wood_scale(
+        static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().x),
+        static_cast<float>(TILE_SIZE) / static_cast<float>(wood_texture.getSize().y)
+    );
+    wood.setScale(wood_scale);
+    window.draw(wood);
+}
+
+void UI::drawProcess(Entity entity) {
+    if (!world_ -> component_manager_.has_component<TargetComponent>(entity))
+        return;
+    auto &target = world_ -> component_manager_.get_component<TargetComponent>(entity);
+    if (!target.is_target || target.progress == 0 || target.progress >= 100) 
+        return;
+    auto loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
+    float bar_width = 1.5 * TILE_SIZE;
+    float bar_height = 0.25 * TILE_SIZE;
+    sf::RectangleShape background(sf::Vector2f(bar_width, bar_height));
+    background.setFillColor(sf::Color::Black);
+    background.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 4, loc.y * TILE_SIZE + TILE_SIZE); 
+    float p = target.progress / 100.0;
+    sf::RectangleShape foreground(sf::Vector2f(p * bar_width, bar_height));
+    foreground.setFillColor(sf::Color::Green);
+    foreground.setPosition(loc.x * TILE_SIZE - TILE_SIZE / 4, loc.y * TILE_SIZE + TILE_SIZE); 
+
+    window.draw(background);
+    window.draw(foreground);
 }
 
 void UI::update_dropped_woods() {
     wood_count.clear();
     for(auto& entity : world_ -> get_all_entities()) {
-        if (!world_ -> component_manager_.has_component<RenderComponent>(entity)
-            || !world_ -> component_manager_.has_component<ResourceComponent>(entity)) {
+        if (!world_ -> component_manager_.has_component<RenderComponent>(entity)) 
             continue;
-        }
         auto& render = world_ -> component_manager_.get_component<RenderComponent>(entity);
-        auto& resource = world_ -> component_manager_.get_component<ResourceComponent>(entity);
-        if (render.entityType == EntityType::WOODPACK && resource.holder == -1) {
+
+        if (render.entityType == EntityType::WOODPACK 
+        && world_ -> component_manager_.has_component<ResourceComponent>(entity)
+        && world_ -> component_manager_.has_component<TargetComponent>(entity)) {
+            if (!world_ -> component_manager_.get_component<TargetComponent>(entity).is_target
+            || world_ -> component_manager_.get_component<ResourceComponent>(entity).holder != -1) {
+                continue;
+            }
+
             auto& loc = world_ -> component_manager_.get_component<LocationComponent>(entity).loc;
             if (wood_count.find(loc) == wood_count.end()) {
                 wood_count[loc] = 1;
@@ -1226,18 +1331,14 @@ void UI::update_dropped_woods() {
     }
 }
 
-// 辅助函数：平滑插值
-float UI::smoothstep(float x) {
-    // 使用三次平滑插值
+float UI::smoothstep(float x) { 
     return x * x * (3 - 2 * x);
 }
 
-// 辅助函数：线性插值
 float UI::lerp(int a, int b, float t) {
     return static_cast<float>(a) + (static_cast<float>(b) - static_cast<float>(a)) * t;
 }
 
-// 绘制选中效果
 void UI::drawSelectionHighlight(float x, float y) {
     sf::RectangleShape highlight;
     highlight.setSize(sf::Vector2f(TILE_SIZE, TILE_SIZE));
@@ -1293,8 +1394,8 @@ void UI::drawGame() {
         drawEntity(entity);
     }
         
-    update_dropped_woods();
-    drawWoodtext();
+    //update_dropped_woods();
+    //drawWoodtext();
 
     if (is_selecting) {
         mouseCurrentPos = sf::Mouse::getPosition(window);

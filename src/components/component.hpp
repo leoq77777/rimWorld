@@ -12,8 +12,10 @@
 using ComponentType = std::uint8_t;
 using Entity = int;
 using Entities = std::vector<Entity>;
-
 using json = nlohmann::json;
+
+using Dir = std::pair<int, int>;
+const std::vector<Dir> directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
 
 struct Location {
     int x;
@@ -41,6 +43,7 @@ namespace std {
 using Locations = std::vector<Location>;
 using RenderPos = std::pair<float, float>;
 using Field = std::pair<Location, Location>;
+using Path = std::deque<Location>;
 
 enum EntityType {
     CHARACTER,
@@ -90,7 +93,7 @@ struct Task {
     bool feasible;
     bool finished;
     int id;
-    Entity actor;
+    Entity actor = -1;
     void print_task_info() {
         std::cout << "--------------------------------" << std::endl;
         std::cout << "task id: " << id << ", type: " << static_cast<int>(type) << ", target locations: " << target_locations[0].x << ", " << target_locations[0].y << std::endl;
@@ -110,6 +113,7 @@ struct MovementComponent {
     float progress; 
     float speed;    
     bool move_finished;
+    Path path;
 };
 
 struct ResourceComponent {
@@ -144,7 +148,6 @@ struct StorageComponent {
 //character will have this
 struct TaskComponent {
     Task current_task;
-    Task next_task;
 };
 //whole procedure: assign a task to a character, 
 //character move to target location, 
@@ -163,7 +166,7 @@ struct TargetComponent {
     float timer;
     bool is_target;
     bool is_finished;
-    bool to_be_deleted;//in world, it will be deleted
+    bool to_be_deleted;
     Entity hold_by;
 };
 
@@ -219,7 +222,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CreateComponent, to_be_created, amount, entit
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(StorageComponent, storage_capacity, current_storage, stored_resources)
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TaskComponent, current_task, next_task)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TaskComponent, current_task)
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionComponent, current_action, action_finished, in_progress)
 

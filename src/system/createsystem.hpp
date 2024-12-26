@@ -10,6 +10,8 @@ class CreateSystem {
     int tile_size_;
     Entities characters_;
     Entities animals_;
+    Entities storages_;
+    Entities doors_;
 public:
     CreateSystem();
     CreateSystem(ComponentManager& component_manager, EntityManager& entity_manager, Router& router, int tile_size) 
@@ -34,6 +36,12 @@ public:
     }
     Entities get_animals() {
         return animals_;
+    }
+    Entities get_storages() {
+        return storages_;
+    }
+    Entities get_doors() {
+        return doors_;
     }
 };
 
@@ -117,7 +125,7 @@ Entity CreateSystem::create_character(Location loc) {
     RenderComponent render{
         .entityType = EntityType::CHARACTER, 
         .is_selected = false, 
-        .collidable = true, 
+        .collidable = false, 
     };
     StorageComponent storage{
         .storage_capacity = 1100,
@@ -265,5 +273,6 @@ Entity CreateSystem::create_storage(Location loc) {
     component_manager_.add_component(entity, location);
     component_manager_.add_component(entity, storage);
     component_manager_.add_component(entity, render);
+    storages_.emplace_back(entity);
     return entity;
 }

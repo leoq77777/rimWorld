@@ -8,8 +8,23 @@ class TaskSystem {
     Router& router_;
     std::vector<Task> task_queue_;
     std::vector<Task> task_in_progress_;
+    std::unordered_map<Entity, Entity> resource_bind;
     int map_size_;
     int max_distance_ = map_size_ * map_size_;
+    int id_;
+    void remove_task_from_progress_by_id(int id);
+    void remove_task_from_queue_by_id(int id);
+    void remove_allocate_task_assigned_to_character(Entity entity);
+    bool character_carries_resource(Entity entity);
+    bool target_entity_in_task_queue(Entity entity);
+    bool is_target_in_progress(Entity entity);
+    void remove_task_from_queue_by_target(Entity entity);
+    void remove_finished_task();
+    Entities get_finished_target_entities();
+    Entity find_exist_obtain_target(Entity blueprint);
+    void bind_resource_to_blueprint(Entity reso, Entity blueprint);
+    bool is_resoure_bound_to_blueprint(Entity reso);
+    void update_storage();
 public:
     TaskSystem();
     TaskSystem(ComponentManager& component_manager, EntityManager& entity_manager, Router& router) : 
@@ -19,86 +34,88 @@ public:
         map_size_ = router_.get_map_size();
         task_queue_.clear();
         std::cout << "TaskSystem initialized with empty task queue" << std::endl;
-        id = 0;
+        id_ = 0;
+    }
+
+    void start_target_timer(Entity entity, float tick_time) {
+        assert(component_manager_.has_component<TargetComponent>(entity));
+        auto& target = component_manager_.get_component<TargetComponent>(entity);
+        target.timer = tick_time;
+    }
+
+    bool is_target_available_at_moment(Entity entity) {
+        assert(component_manager_.has_component<TargetComponent>(entity));
+        auto& target = component_manager_.get_component<TargetComponent>(entity);
+        return target.timer == 0.0;
+    }
+
+    void target_timer_tick(Entity entity) {
+        assert(component_manager_.has_component<TargetComponent>(entity));
+        auto& target = component_manager_.get_component<TargetComponent>(entity);
+        target.timer--;
+        if (target.timer < 0.0) target.timer = 0.0;
     }
 
     void update() {
         std::cout << "TaskSystem updating" << std::endl;
-        update_storage();
+        remove_finished_task();
         update_task_queue();
         assign_task();
+        update_storage();
     }
 
     //update queue based on existed tasks, which are given by world
     void update_task_queue() {
         std::cout << "TaskSystem updating task queue" << std::endl;
-        
+
         //try add back all task that are unfeasible
+        //and delete those tasks that target at non-target
         for(auto& entity : router_.get_entities_with_components<TaskComponent>()) {
             //std::cout << "current entity type: " << router_.printer(entity).first << " ,location: (" << router_.printer(entity).second.x << ", " << router_.printer(entity).second.y << ")" << std::endl;
             auto& cur_task = component_manager_.get_component<TaskComponent>(entity).current_task;
 
             //idle task won't be added back to queue
-            if (cur_task.type == TaskType::IDLE) {
+            if (cur_task.type == TaskType::IDLE)
                 continue;
-            }
 
             //obtain task won't be added back to queue, because it is bound to an allocate task
             if (cur_task.type == TaskType::OBTAIN && !cur_task.feasible) {
                 std::cout << "can not obtain!" << std::endl;
-
-                auto& next_task = component_manager_.get_component<TaskComponent>(entity).next_task;
                 //delete obtain task from this character
                 cur_task = idle_task();
-
-                //add back allocate task(next) to queue
-                task_queue_.emplace_back(next_task);
-                remove_task_from_progress(next_task);
-                next_task = idle_task();
-                
+                remove_allocate_task_assigned_to_character(entity);
                 continue;
             }
 
             //add back all tasks that are not feasible
             if (!cur_task.feasible) {
-                std::cout << "a task is not feasible" << std::endl;
-                if (cur_task.type != TaskType::IDLE) {
-                    task_queue_.emplace_back(cur_task);
-                    remove_task_from_progress(cur_task);
-                    std::cout << "this task is added back to queue" << std::endl;
-                }
+                std::cout << "a task is not feasible, will be added back to queue" << std::endl;
+                remove_task_from_progress_by_id(cur_task.id);
+                Task old = cur_task;
+                old.feasible = true;
+                old.actor = -1;
                 cur_task = idle_task();
+                task_queue_.emplace_back(old);
             }
             
             //delete task if target entity is no longer a target
+            //here deletion should be considered both in task queue and character's task list
             if (cur_task.target_action.target_entity != -1) {
                 auto& target = cur_task.target_action.target_entity;
                 if (!component_manager_.has_component<TargetComponent>(target) || 
                     !component_manager_.get_component<TargetComponent>(target).is_target) {
-                    std::cout << "target entity is no longer a target" << std::endl;
+                    std::cout << "target entity " << target <<" is no longer a target" << std::endl;
+                    remove_task_from_progress_by_id(cur_task.id);
+                    remove_task_from_queue_by_id(cur_task.id);
                     cur_task = idle_task();
-                    remove_task_from_progress(cur_task);
+                    continue;
                 }
-            }
-
-            //Print target entity info of character's current task
-            auto& target = component_manager_.get_component<TaskComponent>(entity).current_task.target_action.target_entity;
-            auto tmp_type = router_.printer(target).first;
-            auto tmp_loc = router_.printer(target).second;
-            std::cout << "target type: " << tmp_type << ", target location: (" << tmp_loc.x << ", " << tmp_loc.y << ")" << std::endl;
-            if (!component_manager_.has_component<TargetComponent>(target)) {
-                std::cout << "current entity with task has no target component" << std::endl;
-                continue;
             }
         }//space: entity with task component(character or animal)
         
-        //remove all completed tasks
-        std::cout << "try: remove finished target/task" << std::endl;
-        remove_finished_task();
-
         //add new tasks into queue
         for (auto& target_entity : router_.get_entities_with_components<TargetComponent>()) {
-            if (target_in_queue(target_entity)) {
+            if (target_entity_in_task_queue(target_entity)) {
                 std::cout << "target is already in queue" << std::endl;
                 continue;
             }
@@ -115,7 +132,7 @@ public:
 
             auto& track = component_manager_.get_component<TargetComponent>(target_entity);
             if (!track.is_target || track.is_finished) {
-                //std::cout << "target entity: " << target_entity << " is not a target" << std::endl;
+                std::cout << "target entity: " << target_entity << " is not a target" << std::endl;
                 continue;
             }
 
@@ -128,19 +145,6 @@ public:
                 continue;
             }
 
-            if(component_manager_.has_component<ResourceComponent>(target_entity)) {
-                auto& resource = component_manager_.get_component<ResourceComponent>(target_entity);
-                auto& holder = resource.holder;
-                if (holder != -1 && component_manager_.has_component<RenderComponent>(holder)) {
-                    auto& hold_type = component_manager_.get_component<RenderComponent>(holder).entityType;
-                    //if woods are held by character, door or wall, it is not a target
-                    if (hold_type == EntityType::CHARACTER || hold_type == EntityType::DOOR || 
-                        hold_type == EntityType::WALL || hold_type == EntityType::STORAGE) {
-                        continue;
-                    }
-                }
-            }
-            
             auto target_type = component_manager_.get_component<RenderComponent>(target_entity).entityType;
             std::cout << "new task, target: " << target_entity;
             std::cout << " Target type: " << target_type << ", Location: (" << tmp_loc.x << ", " << tmp_loc.y << ")" << std::endl;
@@ -179,6 +183,7 @@ public:
             }
             //store resource to storage area
             else if (target_type == EntityType::STORAGE) {
+                assert( component_manager_.has_component<StorageComponent>(target_entity) );
                 std::cout << "find new task: store resource" << std::endl;
                 new_task = store_task(target_entity);
                 valid_task = true;
@@ -192,14 +197,7 @@ public:
             }
         }//space: entity with target component
 
-        //std::cout << "checkpoint2: add idle task into queue" << std::endl;
-
-        //std::cout << "checkpoint3: sort tasks by priority" << std::endl;
-        //sort tasks by priority
-        std::sort(task_queue_.begin(), task_queue_.end(), [](const Task& a, const Task& b) {
-            return a.priority > b.priority;
-        });
-        std::cout << "task wait for assign: " << task_queue_.size() << std::endl;
+        std::cout << "after update queue, task wait for assign: " << task_queue_.size() << std::endl;
 
         if (!task_queue_.empty()) {
             auto& head = task_queue_.front();
@@ -216,58 +214,52 @@ public:
     void assign_task() {
         std::cout << "assigning tasks" << std::endl;
         for(auto character : router_.get_characters()) {
+            std::cout << "assign task to character " << character << std::endl;
             bool is_assigned_task = false;
-            if (!component_manager_.has_component<TaskComponent>(character)) {
-                std::cout << "add task component to character" << std::endl;
-                component_manager_.add_component(character, TaskComponent{
-                    .current_task = idle_task(),
-                    .next_task = idle_task()
-                });
-            }
+            if (!component_manager_.has_component<TaskComponent>(character)) 
+                component_manager_.add_component(character, TaskComponent{.current_task = idle_task()});
 
             auto& character_task = component_manager_.get_component<TaskComponent>(character);
-            
-            //if character is moving, skip this round(avoid flash)
-            if (!router_.is_move_finished(character)) {
-                std::cout << "entity is moving, do not assign task this round" << std::endl;
+            if(character_task.current_task.type != TaskType::IDLE || !router_.is_move_finished(character))
                 continue;
-            }
 
-            /*
-            //ATTTENTION to this: could lead IDLE overload real task
-            if(component_manager_.has_component<ActionComponent>(character)) {
-                auto& action = component_manager_.get_component<ActionComponent>(character);
-                if (action.action_finished) {
-                    character_task.current_task = idle_task();
-                    character_task.next_task = idle_task();
-                }
-            }
-            */
-
-            //keep task at first
-            //attention: while character is moving, assign a new move task would lead to flash
-            if (character_task.current_task.type == TaskType::IDLE 
-                && character_task.next_task.type != TaskType::IDLE) {
-                character_task.current_task = character_task.next_task;
-                character_task.next_task = idle_task();
-            }
-
-            if(character_task.current_task.type != TaskType::IDLE) {
-                continue;
-            }
-
-            //only assign task if current task is available
             std::cout << "task queue has tasks: " << task_queue_.size() << std::endl;
+            if (task_queue_.empty())
+                continue;
+
+            //sort task queue according to how far each task is from character
+            //also consider task priority
+            auto char_loc = component_manager_.get_component<LocationComponent>(character).loc;
+            std::sort(task_queue_.begin(), task_queue_.end(), [&char_loc](const Task& a, const Task& b) {
+                auto distance_squared = [](const Task& task, const Location& loc) -> double {
+                    Location tar = task.target_locations[0];
+                    double dx = tar.x - loc.x;
+                    double dy = tar.y - loc.y;
+                    return dx * dx + dy * dy; 
+                };
+
+                double score_a = (a.priority > 0 ? 1.0 / a.priority : std::numeric_limits<double>::max()) *
+                     distance_squared(a, char_loc);
+                double score_b = (b.priority > 0 ? 1.0 / b.priority : std::numeric_limits<double>::max()) *
+                     distance_squared(b, char_loc);
+                return score_a < score_b;
+            });
+
             for(auto task = task_queue_.begin(); task != task_queue_.end();) {
+                if (task -> actor != -1 && task -> actor != character) {
+                    std::cout << "this task is owned by entity " << task -> actor << ", while current entity is " << character << std::endl; 
+                    ++task;
+                    continue;
+                }
 
                 //attention! target_pos is a set of locations
                 auto targets = task->target_locations; 
                 auto character_pos = component_manager_.get_component<LocationComponent>(character).loc;
                 auto& character_tasks = component_manager_.get_component<TaskComponent>(character);
-                std::cout << "character is at (" << character_pos.x << ", " << character_pos.y << ")" << std::endl;
-                std::cout << "task is at (" << targets[0].x << ", " << targets[0].y << ")" << std::endl;
+                //std::cout << "character is at (" << character_pos.x << ", " << character_pos.y << ")" << std::endl;
+                //std::cout << "task is at (" << targets[0].x << ", " << targets[0].y << ")" << std::endl;
                 
-                if (router_.is_reachable(character_pos, targets)) {
+                if (true || router_.is_reachable(character_pos, targets)) {
                     //std::cout << "reachable!" << std::endl;
                     if ( (task->type == TaskType::ALLOCATE || task->type == TaskType::STORE)
                     && character_carries_resource(character)) {
@@ -278,17 +270,39 @@ public:
                         is_assigned_task = true;
                         std::cout << "character has resource in hand, allocate or store resource" << std::endl;
                         break;
-                    } else if (Entity dst; 
+                    } else if (Entity dst_storage; 
                     task->type == TaskType::ALLOCATE 
-                    && !character_carries_resource(character)
-                    && find_resource_destination(character, dst, 5)) {
-                        Task obtain = obtain_task(dst);
-                        task->actor = character;
-                        character_tasks.current_task = obtain;
-                        task_in_progress_.emplace_back(obtain);
-                        is_assigned_task = true;
-                        std::cout << "character has no resource, but find a storage area to obtain resources" << std::endl;
-                        break;
+                    && !character_carries_resource(character)) {
+                        auto blueprint = task->target_action.target_entity;
+
+                        if (!is_target_available_at_moment(blueprint)) {
+                            target_timer_tick(blueprint);
+                            ++task;
+                            continue;
+                        } 
+
+                        dst_storage = find_exist_obtain_target(blueprint);
+                        if (dst_storage == -1) {
+                            auto temp_storage = component_manager_.get_component<StorageComponent>(blueprint);
+                            int needed_amount = temp_storage.storage_capacity - temp_storage.current_storage;
+                            if (find_resource_destination(character, dst_storage, needed_amount))
+                                bind_resource_to_blueprint(dst_storage, blueprint);
+                        } 
+                        if (dst_storage != -1) {
+                            Task obtain = obtain_task(dst_storage, character);
+
+                            //here mark the ownership of ALLOCATE task and OBTAIN task
+                            obtain.actor = character;
+                            task->actor = character;
+
+                            character_tasks.current_task = obtain;
+                            task_in_progress_.emplace_back(obtain);
+                            is_assigned_task = true;
+                            std::cout << "character has no resource, but find a storage area to obtain resources" << std::endl;
+                            break;
+                        } else {
+                            start_target_timer(blueprint, 100); //wait 100 rounds
+                        }
                     }
                     else if (task->type != TaskType::ALLOCATE && task->type != TaskType::STORE) {
                         // chop/construct/collect
@@ -305,7 +319,7 @@ public:
                         continue;
                     }
                 } else {
-                    std::cout << "unreachable task!" << std::endl;
+                    std::cout << "unreachable task for character " << character << std::endl;
                     ++task;
                     continue;
                 }
@@ -314,154 +328,20 @@ public:
             //if no task is assigned, let character idle
             if (!is_assigned_task) {
                 character_task.current_task = idle_task();
-                character_task.next_task = idle_task();
             }
 
             router_.print_character_current_task(character);
         }
         std::cout << "After assign: task wait for assign: " << task_queue_.size() << ", task in progress: " << task_in_progress_.size() << std::endl;
+        
         //animals are always idling
         for(auto& animal : router_.get_animals()) {
-            if (!component_manager_.has_component<TaskComponent>(animal)) {
-                std::cout << "add task component to animal" << std::endl;
+            if (!component_manager_.has_component<TaskComponent>(animal))
                 component_manager_.add_component(animal, TaskComponent{idle_task()});
-            }
-            if (!router_.is_move_finished(animal)) {
+            if (!router_.is_move_finished(animal)) 
                 continue;
-            }
             component_manager_.get_component<TaskComponent>(animal).current_task = idle_task();
-            component_manager_.get_component<TaskComponent>(animal).next_task = idle_task();
         }
-    }
-
-
-    void remove_corresponding_task_from_queue(Entity entity) {
-        for(auto it = task_in_progress_.begin(); it != task_in_progress_.end();) {
-            if (it->target_action.target_entity == entity) {
-                it = task_in_progress_.erase(it);
-            } else {
-                ++it;
-            }
-        }
-
-        for(auto it = task_queue_.begin(); it != task_queue_.end();) {
-            if (it->target_action.target_entity == entity) {
-                it = task_queue_.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
-
-    void update_task_by_target(Entity entity) {
-        for(auto& entity : router_.get_entities_with_components<TaskComponent>()) {
-            auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
-            if (task.target_action.target_entity == entity) {
-                task = idle_task();
-            }
-        }
-    }
-
-    void remove_finished_task() {
-        //search all entities with TARGET and TARGET is finished
-        //(tree, woodpack just dropped, construction just built)
-        //this search function will mark TARGET deleted if it is a TREE
-        for(auto& entity : finished_target_entities_()) {
-            //if entity appears as a target in the queues
-            //remove the corresponding task
-            std::cout << "ATTENTION: update finished target/task" << std::endl;
-            std::cout << "this entity: " << entity << " is finished, removed from queue" << std::endl;
-            remove_corresponding_task_from_queue(entity);
-        }
-
-        //isolately deal with entity: storage, blueprint
-        //TASKS: STORE(PLACE in storage)
-        //TASKS: OBTAIN(PICK from storage)
-        //TASKS: ALLOCATE(ALLOCATE to blueprint)
-        //for they are targets, but won't be marked as finished
-        //traverse characters doing these tasks
-        for(auto& character : router_.get_characters()) {
-            if (!component_manager_.has_component<TaskComponent>(character)) {
-                continue;
-            }
-            auto& task = component_manager_.get_component<TaskComponent>(character);
-            auto& curTask = task.current_task;
-            auto& nextTask = task.next_task;
-           
-            if(curTask.finished) {
-                std::cout << "current task type: " << static_cast<int>(curTask.type) << " is finished" << std::endl;  
-                
-                //consider idle task
-                if (curTask.type == TaskType::IDLE) {
-                    continue;
-                }
-
-                //remove task from 2 queues by its id
-                remove_task_from_progress(curTask);
-
-                //make character idle after finish current task
-                curTask = idle_task();
-
-                //put next task into current
-                if (nextTask.type != TaskType::IDLE && !nextTask.finished) {
-                    curTask = nextTask;
-                    nextTask = idle_task();
-                } 
-            }
-
-            //ATTENION: it is a batch for multi characters
-            //if blueprint is allocated or built, a character still carries resource on the way
-            //remove this allocate task for him
-            if (curTask.type == TaskType::ALLOCATE && curTask.feasible) {
-                auto& blueprint = curTask.target_action.target_entity;
-                if (component_manager_.has_component<ConstructionComponent>(blueprint)) {
-                    auto& construction = component_manager_.get_component<ConstructionComponent>(blueprint);
-                    if (construction.allocated || construction.is_built) {
-                        remove_task_from_progress(curTask);
-                        curTask = idle_task();
-                    }
-                }
-            }
-
-            //extra logic avoid repeated collect
-            if (curTask.type == TaskType::COLLECT && curTask.feasible) {
-                auto& woodpack = curTask.target_action.target_entity;
-                if (component_manager_.has_component<ResourceComponent>(woodpack)) {
-                    auto& resource = component_manager_.get_component<ResourceComponent>(woodpack);
-                    if (resource.holder != -1) {
-                        remove_task_from_progress(curTask);
-                        curTask = idle_task();
-                    }
-                }
-            }
-        }
-    }
-
-    Entities finished_target_entities_() {
-        Entities entities;
-        for(auto& entity : router_.get_all_entities()) {
-            if (component_manager_.has_component<TargetComponent>(entity)) {
-                auto& target = component_manager_.get_component<TargetComponent>(entity);
-                if (target.is_finished && target.is_target) {
-                    std::cout << "find finished target: " << entity << std::endl;
-                    entities.emplace_back(entity);
-
-                    //if target is a tree, it is finished
-                    //it will be deleted
-                    auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
-                    if (type == EntityType::TREE) {
-                        std::cout << "tree " << entity << " will be deleted" << std::endl;
-                        component_manager_.get_component<TargetComponent>(entity).to_be_deleted = true;
-                    } else if (type == EntityType::WOODPACK) {
-                        //woods are no longer target once they are picked up
-                        //it will be transferred as sub-resource of entity
-                        //like storage, character, construction
-                        component_manager_.get_component<TargetComponent>(entity).is_target = false;
-                    }
-                }
-            }
-        }
-        return entities;
     }
 
     Task empty_task();
@@ -476,7 +356,7 @@ public:
     Task collect_task(Entity entity);
 
     //entity: storage area(units) to obtain resources
-    Task obtain_task(Entity entity);
+    Task obtain_task(Entity entity, Entity actor);
     
     //entity: storage area(units) to store resources
     Task store_task(Entity entity);
@@ -490,102 +370,6 @@ public:
     
 
 private:
-    //every task has a unique id except for idle task
-    int id;
-
-    void update_storage() {
-        bool any_to_store = false;
-        for(auto& character : router_.get_characters()) {
-            //ensure character carries some woods and not on the way to allocate
-            //or a stora task maybe wrongly generated
-            bool to_store = character_carries_resource(character) && !character_is_allocating(character);
-            any_to_store |= to_store;
-            if (to_store) {
-                Entity dst_storage;
-                if (find_resource_destination(character, dst_storage, 0)) {
-
-                    //storage area is already a target
-                    if (component_manager_.has_component<TargetComponent>(dst_storage)) {
-                        auto& target = component_manager_.get_component<TargetComponent>(dst_storage);
-                        target.is_target = true;
-                        continue;
-                    }
-
-                    //add target component
-                    TargetComponent target{
-                        .progress = 0,
-                        .timer = 0,
-                        .is_target = true,
-                        .is_finished = false,
-                        .to_be_deleted = false,
-                        .hold_by = -1
-                    };
-                    component_manager_.add_component(dst_storage, target);
-                }
-                //if no character has resource to store, storage areas are no long targets
-                //thus there will not generate STORAGE task
-            } else if (!any_to_store) {
-                for(auto& storage : router_.get_storage_areas()) {
-                    if (component_manager_.has_component<TargetComponent>(storage)) {
-                        auto& target = component_manager_.get_component<TargetComponent>(storage);
-                        target.is_target = false;
-                    }
-                }
-            }
-        }
-    }
-
-    //here entity is the task's target entity
-    bool is_target_in_progress(Entity entity) {
-        for (auto& task : task_in_progress_) {
-            auto& target = task.target_action.target_entity;
-            if (target == entity) {
-                return true;
-            }
-        }
-        return false;
-    }   
-
-    //remove task from task_in_progress_ by its id
-    //FOR those tasks that could not be recognized FINISHED by target entity
-    //like allocate/store/obtain
-    void remove_task_from_progress(Task task) {
-        for(auto task = task_in_progress_.begin(); task != task_in_progress_.end();) {
-            if (task->id == task -> id) {
-                std::cout << "task id: " << task->id << " is removed from task_in_progress_" << std::endl;
-                task = task_in_progress_.erase(task);
-            } else {
-                ++task;
-            }
-        }
-    }
-
-    void remove_task_from_queue(Task task) {
-        for(auto task = task_queue_.begin(); task != task_queue_.end();) {
-            if (task->id == task -> id) {
-                task = task_queue_.erase(task);
-            } else {
-                ++task;
-            }
-        }
-    }
-
-    //entity is a character
-    bool character_carries_resource(Entity entity) {
-        assert(component_manager_.has_component<StorageComponent>(entity));
-        //chracter always has a bag
-        auto& bag = component_manager_.get_component<StorageComponent>(entity);
-        return bag.current_storage > 0;
-    }
-
-    bool character_is_allocating(Entity entity) {
-        if (!component_manager_.has_component<TaskComponent>(entity)) {
-            return false;
-        }
-        auto& task = component_manager_.get_component<TaskComponent>(entity).current_task;
-        return task.type == TaskType::ALLOCATE;
-    }
-
     bool find_resource_destination(Entity target, Entity& dst, int resource_amount) {
         //std::cout << "try find resource destination" << std::endl;
         bool path_exists = false;
@@ -596,9 +380,10 @@ private:
             auto src_pos = component_manager_.get_component<LocationComponent>(target).loc;
             auto dst_pos = component_manager_.get_component<LocationComponent>(entity).loc;
             auto& storage = component_manager_.get_component<StorageComponent>(entity);
-            if ( router_.find_path(src_pos, dst_pos).size() != 0 
-            && storage.current_storage < storage.storage_capacity
-            && ( resource_amount == 0 || resource_amount > 0 && storage.current_storage > 0 ) ) {
+            if ( src_pos == dst_pos || 
+                (router_.find_path_Ax(src_pos, dst_pos).size() != 0 
+                && storage.current_storage < storage.storage_capacity
+                && ( storage.current_storage >= resource_amount ) ) ) {
                 if (!path_exists) {
                     path_exists = true;
                     distance = router_.calculate_distance(src_pos, dst_pos);
@@ -610,23 +395,200 @@ private:
                 }
             }
         }
-        if (path_exists) {
+        if (path_exists) 
             std::cout << "find storage " << dst << " at (" << final_dst.x << ", " << final_dst.y << ")" << std::endl;
-        }else{
+        else 
             std::cout << "no resource destination found" << std::endl;
-        }
         return path_exists;
     }
+};
 
-    bool target_in_queue(Entity entity) {
-        for (auto& task : task_queue_) {
-            if (task.target_action.target_entity == entity) {
+bool TaskSystem::target_entity_in_task_queue(Entity entity) {
+    for (auto& task : task_queue_) {
+        if (task.target_action.target_entity == entity)
+            return true;
+    }
+    return false;
+}
+
+bool TaskSystem::is_target_in_progress(Entity entity) {
+    for (auto& task : task_in_progress_) {
+        auto& target = task.target_action.target_entity;
+        if (target == entity)
                 return true;
+    }
+    return false;
+} 
+
+void TaskSystem::remove_task_from_progress_by_id(int id) {
+    for(auto task = task_in_progress_.begin(); task != task_in_progress_.end();) {
+        if (task->id == id) task = task_in_progress_.erase(task);
+        else ++task;
+    }
+}
+
+void TaskSystem::remove_task_from_queue_by_id(int id) {
+    for(auto task = task_queue_.begin(); task != task_queue_.end();) {
+        if (task->id == id) task = task_queue_.erase(task);
+        else ++task;
+    }
+}
+
+void TaskSystem::remove_allocate_task_assigned_to_character(Entity entity) {
+    for(auto task = task_queue_.begin(); task != task_queue_.end();) {
+        if (task -> type == TaskType::ALLOCATE && task -> actor == entity) task = task_queue_.erase(task);
+        else ++task;
+    }
+    for(auto task = task_queue_.begin(); task != task_queue_.end();) {
+        if (task -> type == TaskType::ALLOCATE && task -> actor == entity) task = task_queue_.erase(task);
+        else ++task;
+    }
+}
+
+bool TaskSystem::character_carries_resource(Entity entity) {
+    assert(component_manager_.has_component<StorageComponent>(entity));
+    auto& bag = component_manager_.get_component<StorageComponent>(entity);
+    return bag.current_storage > 0;
+}
+
+void TaskSystem::remove_task_from_queue_by_target(Entity entity) {
+    for(auto it = task_in_progress_.begin(); it != task_in_progress_.end();) {
+        if (it->target_action.target_entity == entity) it = task_in_progress_.erase(it);
+        else ++it;
+    }
+
+    for(auto it = task_queue_.begin(); it != task_queue_.end();) {
+        if (it->target_action.target_entity == entity) it = task_queue_.erase(it);
+        else ++it;
+    }
+}
+
+void TaskSystem::remove_finished_task() {
+
+    for(auto& entity : get_finished_target_entities()) {
+        std::cout << "target entity: " << entity << " is finished, removed from queue" << std::endl;
+        remove_task_from_queue_by_target(entity);
+    }
+
+    for(auto& character : router_.get_characters()) {
+        if (!component_manager_.has_component<TaskComponent>(character))
+            continue;
+
+        auto& task = component_manager_.get_component<TaskComponent>(character);
+        auto& curTask = task.current_task;
+           
+        if(curTask.finished) {
+            std::cout << "character " << character << " 's current task type: " << static_cast<int>(curTask.type) << " is finished" << std::endl;  
+            if (curTask.type == TaskType::IDLE) 
+                continue;
+            remove_task_from_progress_by_id(curTask.id);
+            curTask = idle_task();
+        }
+
+        if (curTask.type == TaskType::ALLOCATE && curTask.feasible) {
+            auto& blueprint = curTask.target_action.target_entity;
+            if (component_manager_.has_component<ConstructionComponent>(blueprint)) {
+                auto& construction = component_manager_.get_component<ConstructionComponent>(blueprint);
+                if (construction.allocated || construction.is_built) {
+                    remove_task_from_progress_by_id(curTask.id);
+                    curTask = idle_task();
+                }
             }
         }
-        return false;
+
+        //extra logic avoid repeated collect
+        if (curTask.type == TaskType::COLLECT && curTask.feasible) {
+            auto& woodpack = curTask.target_action.target_entity;
+            if (component_manager_.has_component<ResourceComponent>(woodpack)) {
+                auto& resource = component_manager_.get_component<ResourceComponent>(woodpack);
+                if (resource.holder != -1) {
+                    remove_task_from_progress_by_id(curTask.id);
+                    curTask = idle_task();
+                }
+            }
+        }
     }
-};
+}
+
+Entities TaskSystem::get_finished_target_entities() {
+    Entities entities;
+    for(auto& entity : router_.get_all_entities()) {
+        if (component_manager_.has_component<TargetComponent>(entity)) {
+            auto& target = component_manager_.get_component<TargetComponent>(entity);
+            if (target.is_finished && target.is_target) {
+                std::cout << "find finished target: " << entity << std::endl;
+                entities.emplace_back(entity);
+                target.is_target = false;
+                //if target is a tree, it is finished
+                //it will be deleted
+                auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
+                if (type == EntityType::TREE) {
+                    std::cout << "tree " << entity << " will be deleted" << std::endl;
+                    component_manager_.get_component<TargetComponent>(entity).to_be_deleted = true;
+                } else if (type == EntityType::WOODPACK) {
+                    component_manager_.remove_component<TargetComponent>(entity);
+                }
+            }
+        }
+    }
+    return entities;
+}
+
+void TaskSystem::bind_resource_to_blueprint(Entity reso, Entity blueprint) {
+    resource_bind[blueprint] = reso;
+}
+
+Entity TaskSystem::find_exist_obtain_target(Entity blueprint) {
+    if (resource_bind.find(blueprint) != resource_bind.end())
+        return resource_bind[blueprint];
+    else
+        return -1;
+}
+
+bool TaskSystem::is_resoure_bound_to_blueprint(Entity reso) {
+    for(auto pair : resource_bind) {
+        if (pair.second == reso)
+            return true;
+    }
+    return false;
+}
+
+void TaskSystem::update_storage() {
+    for(auto pair : resource_bind) {
+        auto blueprint = pair.first;
+        auto& construction = component_manager_.get_component<ConstructionComponent>(blueprint);
+        if (construction.allocated) 
+            resource_bind.erase(blueprint);
+    }
+
+    for(auto& character : router_.get_characters()) {
+        assert(component_manager_.has_component<TaskComponent>(character));
+        auto& task = component_manager_.get_component<TaskComponent>(character).current_task;
+        if (character_carries_resource(character) 
+            && task.type != TaskType::ALLOCATE
+            && task.type != TaskType::OBTAIN) {
+            Entity storage_to_store;
+            bool any_to_store = find_resource_destination(character, storage_to_store, 0);
+            if (is_resoure_bound_to_blueprint(storage_to_store)) {
+                std::cout << "current storage " << storage_to_store << " is locked!" << std::endl;
+                any_to_store = false;
+            }
+            if (any_to_store) {
+                std::cout << "character " << character << " to store at " << storage_to_store << std::endl;
+                if (!component_manager_.has_component<TargetComponent>(storage_to_store)) {
+                    component_manager_.add_component(storage_to_store, TargetComponent{
+                        .progress = 0,
+                        .is_target = true,
+                        .is_finished = false
+                    });
+                } else {
+                    component_manager_.get_component<TargetComponent>(storage_to_store).is_target = true;
+                    component_manager_.get_component<TargetComponent>(storage_to_store).is_finished = false;
+                }
+            }
+        }
+    }
+}
 
 Task TaskSystem::empty_task() {
     return Task{
@@ -657,12 +619,12 @@ Task TaskSystem::chop_task(Entity entity) {
     return Task{
         .type = TaskType::CHOP_WOOD, 
         .target_locations = router_.get_locations_around(pos),
-        .priority = 3, 
+        .priority = 10, 
         .target_action = Action{
             ActionType::CHOP, pos, 2.0, entity
         },
         .feasible = true,
-        .id = ++id
+        .id = ++id_
     };
 }
 
@@ -672,16 +634,16 @@ Task TaskSystem::collect_task(Entity entity) {
     return Task{
         .type = TaskType::COLLECT, 
         .target_locations = {pos},
-        .priority = 99, 
+        .priority = 15, 
         .target_action = Action{
             ActionType::PICK, pos, 1.0, entity
         },
         .feasible = true,
-        .id = ++id
+        .id = ++id_
     };
 }
 
-Task TaskSystem::obtain_task(Entity entity) {
+Task TaskSystem::obtain_task(Entity entity, Entity actor) {
     auto& pos = component_manager_.get_component<LocationComponent>(entity).loc;
     return Task{
         .type = TaskType::OBTAIN, 
@@ -691,7 +653,8 @@ Task TaskSystem::obtain_task(Entity entity) {
             ActionType::PICK, pos, 1.0, entity
         },
         .feasible = true,
-        .id = ++id
+        .id = ++id_,
+        .actor = actor
     };
 }
     
@@ -701,12 +664,12 @@ Task TaskSystem::store_task(Entity entity) {
     return Task{
         .type = TaskType::STORE, 
         .target_locations = router_.get_locations_around(pos),
-        .priority = 50,//always consider storing first 
+        .priority = 8,//always consider storing first 
         .target_action = Action{
             ActionType::PLACE, pos, 1.0, entity
         },
         .feasible = true,
-        .id = ++id
+        .id = ++id_
     };
 }
     
@@ -716,12 +679,12 @@ Task TaskSystem::allocate_task(Entity entity) {
     return Task{
         .type = TaskType::ALLOCATE, 
         .target_locations = router_.get_locations_around(pos),
-        .priority = 5, 
+        .priority = 10, 
         .target_action = Action{
             ActionType::PLACE, pos, 1.0, entity
         },
         .feasible = true,
-        .id = ++id
+        .id = ++id_
     };
 }
 
@@ -731,11 +694,11 @@ Task TaskSystem::construct_task(Entity entity) {
     return Task{
         .type = TaskType::CONSTRUCT, 
         .target_locations = router_.get_locations_around(pos),
-        .priority = 7, 
+        .priority = 5, 
         .target_action = Action{
             ActionType::BUILD, pos, 5.0, entity
         },
         .feasible = true,
-        .id = ++id
+        .id = ++id_
     };
 }

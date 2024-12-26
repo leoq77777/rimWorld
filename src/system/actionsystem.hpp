@@ -2,7 +2,7 @@
 #include "utils/path.hpp"
 #include <cassert>
 class ActionSystem {
-    static constexpr float BASE_MOVE_SPEED = 0.5f; 
+    static constexpr float BASE_MOVE_SPEED = 2.0f; 
     static constexpr float DOG_SPEED_MULTIPLIER = 1.5f;  
     static constexpr float HAS_TASK_BOOSTER = 2.0f;
     ComponentManager& component_manager_;
@@ -28,10 +28,8 @@ public:
         
         for (auto entity : entities) {
             auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
-            if (type == EntityType::DOG) {
-                //std::cout << "do not print dog action" << std::endl;
+            if (type == EntityType::DOG) 
                 print = false;
-            }
 
             if (!component_manager_.has_component<ActionComponent>(entity)) {
                 if (print) std::cout << "add action component to entity " << entity << std::endl;
@@ -43,11 +41,11 @@ public:
 
             auto& action = component_manager_.get_component<ActionComponent>(entity);
             auto& task = component_manager_.get_component<TaskComponent>(entity);
-            if (print) std::cout << "try update action of entity " << entity << std::endl;
-            //assign action based on current task
+
+            if (print) router_.print_character_current_task(entity);
+
             assign_action(entity, print);
 
-            //execute
             execute_current_action(entity, print);
         }
     }
@@ -63,7 +61,6 @@ private:
         auto& cur_pos = component_manager_.get_component<LocationComponent>(entity).loc;
         auto& target_pos = task.target_locations;
         
-        router_.print_character_current_task(entity);
 
         //isolately deal with idle task
         if (task.type == TaskType::IDLE && router_.is_move_finished(entity)) {
@@ -88,21 +85,67 @@ private:
                 action.current_action = task.target_action;
                 action.in_progress = true;
                 std::cout << "entity arrives at target location, start action" << std::endl;
+                
+                //IMPORTANT, if one arrives at task location, remember to delete his path
+                if (component_manager_.has_component<MovementComponent>(entity)) {
+                    auto& path = component_manager_.get_component<MovementComponent>(entity).path;
+                    path = {};
+                }
             } else {
                 if (print) std::cout << "entity is in action, skip. Action Target: " << action.current_action.target_entity << std::endl;
             }
         } else {
             if (print) std::cout << "entity does not arrive at target location, update path and move" << std::endl;
             //update path, and move
-            Path path = router_.find_path_to_locations(cur_pos, target_pos);
-            //could not reach target location, set task unfeasible
+            
+            /*THIS is for that entity is doing task when the target loctaion becomes unreachable
+            thus will set this task unfeasible
+            (Because this costs a lot, and unreachable situation is rare, cancel it)
             if (!router_.is_reachable(cur_pos, target_pos)) {
                 if (print) std::cout << "entity cannot reach target location, set task unfeasible" << std::endl;
                 task.feasible = false;
                 return;
-            }   
+            }
+            */
+
             //move
             if (print) std::cout << "entity " << entity << " current action is move" << std::endl;
+            //Here use a trick, do not update path if the next position is always valid
+            //thus should store Path in the move action
+            assert( component_manager_.has_component<MovementComponent>(entity) );
+            auto& path = component_manager_.get_component<MovementComponent>(entity).path;
+            //if don't has a path, add one
+            if (path.size() == 0) {
+                path = router_.find_path_to_locations(cur_pos, target_pos, "Ax");
+                std::cout << "set a new path" << std::endl;
+            }
+            
+            std::cout << "current pos: " << cur_pos.x << ", " << cur_pos.y << std::endl;
+
+            //check if next step is valid
+            auto& next_step = path.front();            
+            std::cout << "next step at ( " << next_step.x << ", " << next_step.y << " )" << std::endl;
+
+            if (next_step == cur_pos) {
+                std::cout << "already in!" << std::endl;
+                path.pop_front();
+                return;
+            }
+
+            if (!router_.is_valid_position(next_step)) {
+                std::cout << "next step invalid, re-calculate path" << std::endl;
+                path = router_.find_path_to_locations(cur_pos, target_pos, "Ax");
+            }
+
+            //still invalid next step, set this task unfeasible
+            if (!router_.is_valid_position(next_step)){
+                std::cout << "still, next step is invalid, set task unfeasible" << std::endl;
+                path = {};
+                task.feasible = false;
+                return;
+            }
+
+            //i do this to decrease the calculation time of routing which costs a lot
             action.current_action = move_action(entity, path);
             action.action_finished = false;
         }
@@ -183,7 +226,7 @@ private:
         auto& next_pos = path.front();
         return Action{
             .type = ActionType::MOVE, 
-            .target_location = Location{next_pos.first, next_pos.second}, 
+            .target_location = Location{next_pos.x, next_pos.y}, 
             .duration = 1.0f / BASE_MOVE_SPEED,  // 使用基础移动速度计算duration
             .target_entity = entity
         };
@@ -224,25 +267,35 @@ private:
             return;
         }
 
+        if (!router_.is_valid_position(target_pos)) {
+            std::cout << "invalid next move target" << std::endl;
+            finish_current_action(entity);
+            return;
+        }
+
         float speed = BASE_MOVE_SPEED;
         auto& type = component_manager_.get_component<RenderComponent>(entity).entityType;
-        //dog moves faster
-        if (type == EntityType::DOG) {
+        
+        if (type == EntityType::DOG)
             speed = BASE_MOVE_SPEED * 1.5f;
-        }
-        //if entity is doing task, boost its speed
-        if (type == EntityType::CHARACTER && !is_character_available(entity)) {
+
+        if (type == EntityType::CHARACTER && !is_character_available(entity))
             speed *= HAS_TASK_BOOSTER;
-        }
+    
+        if (router_.to_be_slow(cur_pos))
+            speed *= 0.25;
 
         if (!component_manager_.has_component<MovementComponent>(entity)) {
             component_manager_.add_component(entity, MovementComponent{
                 .start_pos = cur_pos,
-                .end_pos = target_pos,
+                .end_pos = cur_pos, //don't worry, this will be updated when executing move action
                 .progress = 0.0f,
-                .speed = speed
+                .speed = 0, //same to end_pos
+                .path = {}
             });
         } 
+
+        assert(component_manager_.has_component<MovementComponent>(entity));
 
         auto& movement = component_manager_.get_component<MovementComponent>(entity);
         //update movement component
@@ -250,7 +303,7 @@ private:
         movement.start_pos = cur_pos;
         movement.end_pos = target_pos;
         movement.progress += movement.speed * (1.0f / framerate_);
-        
+
         if (movement.progress >= 1.0f) {
             cur_pos = target_pos;
             //reset movement
@@ -406,6 +459,9 @@ private:
             }
 
             std::cout << "current storage unit has " << storage.current_storage << " woodpacks" << std::endl;
+            assert(component_manager_.has_component<TargetComponent>(site));
+            auto& track = component_manager_.get_component<TargetComponent>(site);
+            track.is_finished = true;
             finish_current_action(entity);
 
             /*to delete
@@ -455,6 +511,13 @@ private:
                     */
                     return;
                 }
+            }
+
+            if (carriage.current_storage == 0) {
+                std::cout << "character has no resource in hand" << std::endl;
+            }
+            if (storage.current_storage >= storage.storage_capacity) {
+                std::cout << "already allocated!" << std::endl;
             }
             
         }
@@ -516,4 +579,5 @@ private:
             std::cout << "all woodpacks on site are deleted" << std::endl;
         }
     }
+
 };  
